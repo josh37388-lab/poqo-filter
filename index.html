@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>POQO Video Filter</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#111;color:#e0e0e0;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;overflow:hidden}
+#app{display:flex;flex-direction:column;height:calc(100vh - 56px);margin-top:56px;background:#111}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #222;flex-shrink:0}
+.logo{font-size:18px;font-weight:700;color:#c75b39;letter-spacing:2px;font-family:"Courier New",monospace}
+.sub{font-size:11px;color:#555;margin-left:8px}
+.open-btn{padding:8px 16px;background:#1e1e1e;border:1px solid #333;border-radius:6px;color:#bbb;font-size:13px;cursor:pointer;-webkit-appearance:none;touch-action:manipulation}
+.preview{flex:1;display:flex;align-items:center;justify-content:center;margin:8px 12px 6px;border-radius:10px;background:#0a0a0a;border:1px solid #1a1a1a;overflow:hidden;position:relative;min-height:0}
+.empty{text-align:center;color:#3a3a3a;padding:20px}
+.eicon{font-size:34px;margin-bottom:10px;opacity:0.4}
+.etxt{font-size:14px;color:#444}
+.ehint{font-size:11px;color:#2a2a2a;margin-top:5px;font-family:"Courier New",monospace}
+#vwrap{display:none;position:relative;width:100%;height:100%}
+#vid{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transform:translateZ(0);will-change:filter}
+#vvig{position:absolute;inset:0;pointer-events:none;border-radius:10px}
+#vnoise{position:absolute;inset:0;pointer-events:none;opacity:0.5;image-rendering:pixelated;border-radius:10px;width:100%;height:100%}
+#vscan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.05) 3px,rgba(0,0,0,0.05) 4px);border-radius:10px}
+#vts{position:absolute;bottom:9px;left:10px;font-family:"Courier New",monospace;font-size:11px;color:rgba(255,255,255,0.92);text-shadow:1px 1px 0 rgba(0,0,0,0.65);white-space:nowrap;pointer-events:none;z-index:10}
+.recbadge{display:none;align-items:center;gap:5px;position:absolute;top:9px;right:9px;background:rgba(0,0,0,0.72);padding:3px 9px;border-radius:3px;font-size:10px;color:#ff5555;font-family:"Courier New",monospace;z-index:10}
+.recbadge.on{display:flex}
+.dot{width:6px;height:6px;background:#ff5555;border-radius:50%;animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.ctrls{background:#161616;border-radius:8px;padding:9px 12px;margin:0 12px 6px;border:1px solid #1e1e1e;flex-shrink:0}
+.ctrl-row{display:flex;gap:12px;margin-bottom:7px}
+.cg{flex:1}
+.ctop{display:flex;justify-content:space-between;margin-bottom:2px}
+.cl{font-size:10px;color:#666}
+.cv{font-size:10px;color:#555;font-family:"Courier New",monospace}
+input[type=range]{width:100%;accent-color:#c75b39;height:20px;cursor:pointer;touch-action:manipulation}
+.cbot{display:flex;justify-content:space-between;font-size:9px;color:#333;margin-top:0}
+.ts-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.tsl{font-size:10px;color:#666;white-space:nowrap}
+.tsi{flex:1;padding:5px 7px;background:#0d0d0d;border:1px solid #252525;border-radius:4px;color:#bbb;font-family:"Courier New",monospace;font-size:11px;outline:none;-webkit-appearance:none}
+.btn-row{display:flex;justify-content:flex-end;align-items:center}
+.xbtn{padding:8px 22px;background:#c75b39;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;-webkit-appearance:none;touch-action:manipulation}
+.xbtn:disabled{background:#2a2a2a;color:#555}
+.xbtn.stop{background:#7a3520}
+.ios-note{font-size:10px;color:#555;font-family:"Courier New",monospace;text-align:right;line-height:1.6}
+.stat{font-size:10px;color:#333;padding:2px 16px 8px;font-family:"Courier New",monospace;flex-shrink:0;min-height:20px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="hdr">
+    <div><span class="logo">POQO</span><span class="sub">Video Filter</span></div>
+    <button class="open-btn" id="btnOpen">Open Video</button>
+    <input type="file" id="fileIn" accept="video/*" style="display:none">
+  </div>
+  <div class="preview" id="prevWrap">
+    <div class="empty" id="emptyState">
+      <div class="eicon">🎬</div>
+      <div class="etxt">Tap Open Video to start</div>
+      <div class="ehint">MP4 · MOV · Reels &amp; TikTok</div>
+    </div>
+    <div id="vwrap">
+      <video id="vid" playsinline muted loop webkit-playsinline></video>
+      <div id="vscan"></div>
+      <canvas id="vnoise"></canvas>
+      <div id="vvig"></div>
+      <div id="vts"></div>
+      <div class="recbadge" id="recBadge"><div class="dot"></div>REC</div>
+    </div>
+  </div>
+  <div class="ctrls">
+    <div class="ctrl-row">
+      <div class="cg">
+        <div class="ctop"><span class="cl">POQOness</span><span class="cv" id="iLbl">100%</span></div>
+        <input type="range" id="sInt" min="0" max="1.5" step="0.05" value="1.0">
+        <div class="cbot"><span>clean</span><span>grime</span></div>
+      </div>
+      <div class="cg">
+        <div class="ctop"><span class="cl">Blur</span><span class="cv" id="bLbl">80%</span></div>
+        <input type="range" id="sBlur" min="0" max="3" step="0.1" value="0.8">
+        <div class="cbot"><span>sharp</span><span>dreamy</span></div>
+      </div>
+    </div>
+    <div class="ts-row">
+      <span class="tsl">Timestamp</span>
+      <input type="text" id="tsIn" class="tsi" placeholder="YYYY/MM/DD  HH:MM:SS">
+    </div>
+    <div class="btn-row" id="exportArea"></div>
+  </div>
+  <div class="stat" id="stat">vive un poco</div>
+</div>
+<script>
+const vid=document.getElementById('vid'),vwrap=document.getElementById('vwrap'),noiseC=document.getElementById('vnoise'),vigEl=document.getElementById('vvig'),tsDiv=document.getElementById('vts'),recBadge=document.getElementById('recBadge'),emptyState=document.getElementById('emptyState'),statEl=document.getElementById('stat'),btnOpen=document.getElementById('btnOpen'),fileIn=document.getElementById('fileIn'),sInt=document.getElementById('sInt'),sBlur=document.getElementById('sBlur'),tsIn=document.getElementById('tsIn'),exportArea=document.getElementById('exportArea'),iLbl=document.getElementById('iLbl'),bLbl=document.getElementById('bLbl');
+let nCtx,hasVideo=false,intensity=1.0,blurScale=0.8,autoTs='',recorder=null,chunks=[],isRec=false,canExport=false,noiseRaf=null;
+function setStatus(s){statEl.textContent=s;}
+function gauss(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function updateFilter(){
+  const i=intensity;
+  const blur=(i*blurScale*1.2).toFixed(2);
+  vid.style.filter=`contrast(${(0.90+(1-i)*0.10).toFixed(3)}) brightness(${(1.0+i*0.05).toFixed(3)}) saturate(${(1.0-i*0.18).toFixed(3)}) sepia(${(i*0.20).toFixed(3)}) blur(${blur}px)`;
+  vigEl.style.background=i>0.05?`radial-gradient(ellipse at center,transparent 38%,rgba(0,0,0,${(0.5*i).toFixed(2)}) 100%)`:'none';
+}
+let lastNoise=0;
+function tickNoise(ts){
+  noiseRaf=requestAnimationFrame(tickNoise);
+  if(ts-lastNoise<83)return;
+  lastNoise=ts;
+  if(!hasVideo||intensity<0.1||!nCtx){nCtx&&nCtx.clearRect(0,0,noiseC.width,noiseC.height);return;}
+  const W=noiseC.width,H=noiseC.height,id=nCtx.createImageData(W,H),d=id.data,std=9*intensity;
+  for(let i=0;i<d.length;i+=4){const n=(gauss()*std+128)|0,v=n<0?0:n>255?255:n;d[i]=d[i+1]=d[i+2]=v;d[i+3]=38;}
+  nCtx.putImageData(id,0,0);
+}
+function loadVideo(file){
+  setStatus('Loading…');hasVideo=false;
+  const d=new Date(file.lastModified),p=n=>String(n).padStart(2,'0');
+  autoTs=`${d.getFullYear()}/${p(d.getMonth()+1)}/${p(d.getDate())}  ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  tsIn.value=autoTs;
+  vid.src=URL.createObjectURL(file);vid.load();
+  vid.onloadedmetadata=()=>{
+    const vw=vid.videoWidth,vh=vid.videoHeight;
+    noiseC.width=Math.round(vw/4);noiseC.height=Math.round(vh/4);
+    nCtx=noiseC.getContext('2d');
+    updateFilter();tsDiv.textContent=autoTs;
+    vid.play().then(()=>{
+      hasVideo=true;emptyState.style.display='none';vwrap.style.display='block';
+      setStatus(`${vw}×${vh} · ${(file.size/1e6).toFixed(1)}MB`);
+      if(!noiseRaf)noiseRaf=requestAnimationFrame(tickNoise);
+      canExport=typeof MediaRecorder!=='undefined'&&['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].some(t=>MediaRecorder.isTypeSupported(t));
+      renderExport();
+    }).catch(()=>setStatus('Playback error — try a different clip'));
+  };
+  vid.onerror=()=>setStatus('Could not load — try MP4 or MOV');
+}
+function renderExport(){
+  exportArea.innerHTML='';
+  if(canExport){const btn=document.createElement('button');btn.className='xbtn'+(isRec?' stop':'');btn.textContent=isRec?'Stop & Save':'Export WebM';btn.onclick=isRec?stopExport:startExport;exportArea.appendChild(btn);}
+  else{const n=document.createElement('span');n.className='ios-note';n.innerHTML='Preview on iOS —<br>screen record to capture';exportArea.appendChild(n);}
+}
+function startExport(){
+  const mime=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(t=>MediaRecorder.isTypeSupported(t));
+  const expC=document.createElement('canvas');expC.width=vid.videoWidth;expC.height=vid.videoHeight;
+  const expCtx=expC.getContext('2d');
+  function drawFrame(){if(!isRec)return;expCtx.filter=vid.style.filter||'none';expCtx.drawImage(vid,0,0);const ts=tsIn.value.trim()||autoTs;if(ts){const sc=expC.width/800;expCtx.filter='none';expCtx.font=`bold ${Math.round(22*sc)}px "Courier New",monospace`;expCtx.textBaseline='bottom';expCtx.fillStyle='rgba(0,0,0,0.5)';expCtx.fillText(ts,Math.round(12*sc)+1,expC.height-Math.round(18*sc)+1);expCtx.fillStyle='rgba(255,255,255,0.92)';expCtx.fillText(ts,Math.round(12*sc),expC.height-Math.round(18*sc));}requestAnimationFrame(drawFrame);}
+  const stream=expC.captureStream(30);chunks=[];
+  recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:10000000});
+  recorder.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};recorder.onstop=saveExport;
+  vid.loop=false;vid.currentTime=0;vid.play();vid.onended=stopExport;
+  recorder.start(200);isRec=true;recBadge.classList.add('on');drawFrame();renderExport();
+  setStatus('Recording… saves automatically at clip end');
+}
+function stopExport(){if(recorder&&recorder.state!=='inactive')recorder.stop();vid.loop=true;vid.onended=null;isRec=false;recBadge.classList.remove('on');renderExport();setStatus('Saving…');}
+function saveExport(){const blob=new Blob(chunks,{type:'video/webm'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='poqo_filtered.webm';document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(a.href),2000);setStatus(`Saved · ${(blob.size/1e6).toFixed(1)}MB`);}
+btnOpen.onclick=()=>fileIn.click();
+fileIn.onchange=e=>{const f=e.target.files?.[0];if(f)loadVideo(f);e.target.value='';};
+sInt.oninput=()=>{intensity=parseFloat(sInt.value);iLbl.textContent=Math.round(intensity*100)+'%';updateFilter();};
+sBlur.oninput=()=>{blurScale=parseFloat(sBlur.value);bLbl.textContent=Math.round(blurScale*100)+'%';updateFilter();};
+tsIn.oninput=()=>{tsDiv.textContent=tsIn.value.trim()||autoTs;};
+</script>
+</body>
+</html>
