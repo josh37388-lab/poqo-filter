@@ -18,7 +18,6 @@ html,body{height:100%;background:#111;overflow:hidden;font-family:"Helvetica Neu
 .eicon{font-size:34px;margin-bottom:10px;opacity:0.35}
 .etxt{font-size:14px;color:#444}
 .ehint{font-size:11px;color:#2a2a2a;margin-top:5px;font-family:"Courier New",monospace}
-/* Canvas fills the preview box */
 #out{display:none;max-width:100%;max-height:100%}
 .recbadge{display:none;align-items:center;gap:5px;position:absolute;top:9px;right:9px;background:rgba(0,0,0,0.72);padding:3px 9px;border-radius:3px;font-size:10px;color:#ff5555;font-family:"Courier New",monospace;z-index:10}
 .recbadge.on{display:flex}
@@ -63,12 +62,12 @@ input[type=range]{width:100%;accent-color:#c75b39;height:20px;cursor:pointer;tou
       <div class="cg">
         <div class="ctop"><span class="cl">Vignette</span><span class="cv" id="vLbl">100%</span></div>
         <input type="range" id="sVig" min="0" max="2" step="0.05" value="1.0">
-        <div class="cbot"><span>flat</span><span>dark edges</span></div>
+        <div class="cbot"><span>off</span><span>heavy</span></div>
       </div>
       <div class="cg">
-        <div class="ctop"><span class="cl">Coolness</span><span class="cv" id="cLbl">100%</span></div>
+        <div class="ctop"><span class="cl">Cool tone</span><span class="cv" id="cLbl">100%</span></div>
         <input type="range" id="sCool" min="0" max="2" step="0.05" value="1.0">
-        <div class="cbot"><span>neutral</span><span>cold</span></div>
+        <div class="cbot"><span>off</span><span>cold</span></div>
       </div>
     </div>
     <div class="tsrow">
@@ -105,11 +104,27 @@ let vigAmt=1.0, coolAmt=1.0, autoTs='';
 let recorder=null, chunks=[], isRec=false, canExport=false;
 let W=0, H=0;
 
-// Output canvas is 16:9, displayed with black bars (letterbox) like real poqo
-// Canvas width = preview width, height = width * 9/16
-// Surrounded by black background of preview div
+// Pre-baked vignette map — only rebuilt when size changes
+let vigMap=null, vigW=0, vigH=0;
 
 function setStatus(s){statEl.textContent=s;}
+
+function buildVigMap(w,h){
+  if(vigMap&&vigW===w&&vigH===h)return;
+  vigW=w; vigH=h;
+  vigMap=new Float32Array(w*h);
+  const cx=w/2, cy=h/2;
+  const maxDist=Math.sqrt(cx*cx+cy*cy);
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+      const dx=x-cx, dy=y-cy;
+      const dist=Math.sqrt(dx*dx+dy*dy)/maxDist;
+      // Heavy vignette: starts at 0.45 dist, fully black at edges
+      const v=Math.max(0, Math.min(1, 1 - Math.pow(Math.max(0,dist-0.35)/0.65, 1.4)));
+      vigMap[y*w+x]=v;
+    }
+  }
+}
 
 function gauss(){
   let u=0,v=0;
@@ -118,64 +133,70 @@ function gauss(){
   return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
 }
 
-// Small digital noise — like a real cheap sensor, not heavy film grain
-const noiseC=document.createElement('canvas');
-let nCtx=null, lastNoise=0;
-function refreshNoise(){
-  const nW=Math.ceil(W/6), nH=Math.ceil(H/6);
-  if(noiseC.width!==nW||noiseC.height!==nH){
-    noiseC.width=nW; noiseC.height=nH;
-    nCtx=noiseC.getContext('2d');
-  }
-  const id=nCtx.createImageData(nW,nH), d=id.data;
-  // Light digital noise std ~12 — subtle, like a real cheap sensor
-  const std=12;
-  for(let i=0;i<d.length;i+=4){
-    const n=(gauss()*std+128)|0, v=n<0?0:n>255?255:n;
-    d[i]=d[i+1]=d[i+2]=v; d[i+3]=28;
-  }
-  nCtx.putImageData(id,0,0);
-}
+let frameCount=0;
 
 function renderFrame(){
   rafId=requestAnimationFrame(renderFrame);
   if(!hasVideo||vid.readyState<2)return;
 
-  // 1. Draw video to tmpC with colour grade
-  // Real poqo: cool blue-grey, lifted blacks, slight desaturation, minimal blur
-  const blurPx=(0.8).toFixed(1); // very slight softness only
-  const cool=coolAmt;
-  tCtx.filter=`blur(${blurPx}px) contrast(0.85) brightness(1.12) saturate(0.80) hue-rotate(${(-15*cool).toFixed(0)}deg)`;
+  frameCount++;
+  // Process every other frame on mobile for speed
+  const skip = W<=480 && frameCount%2===0;
+
+  // Draw raw video frame to tmpC
   tCtx.drawImage(vid,0,0,W,H);
-  tCtx.filter='none';
 
-  // 2. Copy to output
-  ctx.drawImage(tmpC,0,0);
+  if(!skip){
+    // Get pixel data
+    const imgData=tCtx.getImageData(0,0,W,H);
+    const d=imgData.data;
 
-  // 3. Heavy radial vignette — this is the dominant visual effect in real poqo
-  // Very dark edges, bright centre — matches reference screenshots exactly
-  const vig=vigAmt;
-  const grad=ctx.createRadialGradient(W*0.5,H*0.5,H*0.05, W*0.5,H*0.5,H*0.72);
-  grad.addColorStop(0,'rgba(0,0,0,0)');
-  grad.addColorStop(0.45,'rgba(0,0,0,0)');
-  grad.addColorStop(0.75,`rgba(0,0,0,${(0.45*vig).toFixed(2)})`);
-  grad.addColorStop(1,`rgba(0,0,0,${(0.88*vig).toFixed(2)})`);
-  ctx.fillStyle=grad;
-  ctx.fillRect(0,0,W,H);
+    buildVigMap(W,H);
 
-  // 4. Subtle digital noise (not heavy grain)
-  const now=performance.now();
-  if(now-lastNoise>120){
-    lastNoise=now;
-    refreshNoise();
+    const cool=coolAmt;
+    const vig=vigAmt;
+
+    // Add subtle noise each frame
+    const noiseStd=8;
+
+    for(let i=0;i<d.length;i+=4){
+      const px=i>>2;
+      let r=d[i], g=d[i+1], b=d[i+2];
+
+      // 1. Lift blacks (add 20) — key part of the poqo look
+      r=Math.min(255, r*0.82 + 20);
+      g=Math.min(255, g*0.82 + 20);
+      b=Math.min(255, b*0.82 + 20);
+
+      // 2. Cool blue shift — reduce red, boost blue
+      r = r - (25 * cool);
+      b = b + (18 * cool);
+
+      // 3. Slight desaturation
+      const gray=(r+g+b)/3;
+      r = gray + (r-gray)*0.78;
+      g = gray + (g-gray)*0.78;
+      b = gray + (b-gray)*0.78;
+
+      // 4. Subtle sensor noise
+      const n=(gauss()*noiseStd)|0;
+      r+=n; g+=n; b+=n;
+
+      // 5. Vignette — multiply by vignette map
+      const vm=1-(1-vigMap[px])*vig*0.92;
+      r*=vm; g*=vm; b*=vm;
+
+      d[i]   = r<0?0:r>255?255:r|0;
+      d[i+1] = g<0?0:g>255?255:g|0;
+      d[i+2] = b<0?0:b>255?255:b|0;
+    }
+
+    ctx.putImageData(imgData,0,0);
+  } else {
+    ctx.drawImage(tmpC,0,0);
   }
-  if(nCtx){
-    ctx.globalAlpha=0.30;
-    ctx.drawImage(noiseC,0,0,W,H);
-    ctx.globalAlpha=1;
-  }
 
-  // 5. Timestamp — small, bottom left, white, exactly like reference
+  // Timestamp
   const ts=tsIn.value.trim()||autoTs;
   if(ts){
     const sc=W/1000;
@@ -183,22 +204,22 @@ function renderFrame(){
     ctx.font=`bold ${fs}px "Courier New",Courier,monospace`;
     ctx.textBaseline='bottom';
     const tx=Math.round(8*sc), ty=H-Math.round(10*sc);
-    ctx.fillStyle='rgba(0,0,0,0.6)';
+    ctx.fillStyle='rgba(0,0,0,0.65)';
     ctx.fillText(ts,tx+1,ty+1);
-    ctx.fillStyle='rgba(255,255,255,0.88)';
+    ctx.fillStyle='rgba(255,255,255,0.90)';
     ctx.fillText(ts,tx,ty);
   }
 }
 
 function setupCanvases(vw,vh){
-  // Cap width for mobile performance
-  const maxW=window.innerWidth<=428?480:800;
+  const maxW=window.innerWidth<=428?360:720;
   W=Math.min(vw,maxW);
   H=Math.round(vh*(W/vw));
   out.width=W; out.height=H;
   tmpC.width=W; tmpC.height=H;
   ctx=out.getContext('2d');
   tCtx=tmpC.getContext('2d');
+  vigMap=null; // force rebuild
 }
 
 function loadVideo(file){
@@ -273,9 +294,8 @@ function saveExport(){
 
 btnOpen.onclick=()=>fileIn.click();
 fileIn.onchange=e=>{const f=e.target.files?.[0];if(f)loadVideo(f);e.target.value='';};
-sVig.oninput=()=>{vigAmt=parseFloat(sVig.value);vLbl.textContent=Math.round(vigAmt*100)+'%';};
+sVig.oninput=()=>{vigAmt=parseFloat(sVig.value);vLbl.textContent=Math.round(vigAmt*100)+'%';vigMap=null;};
 sCool.oninput=()=>{coolAmt=parseFloat(sCool.value);cLbl.textContent=Math.round(coolAmt*100)+'%';};
-tsIn.oninput=()=>{};
 </script>
 </body>
 </html>
