@@ -13,13 +13,13 @@ html,body{height:100%;background:#111;overflow:hidden;font-family:"Helvetica Neu
 .logo{font-size:18px;font-weight:700;color:#c75b39;letter-spacing:2px;font-family:"Courier New",monospace}
 .sub{font-size:11px;color:#555;margin-left:8px}
 .openbtn{padding:8px 16px;background:#1e1e1e;border:1px solid #333;border-radius:6px;color:#bbb;font-size:13px;cursor:pointer;-webkit-appearance:none}
-.preview{flex:1;display:flex;align-items:center;justify-content:center;margin:8px 12px 6px;border-radius:10px;background:#0a0a0a;border:1px solid #1a1a1a;overflow:hidden;position:relative;min-height:0}
+.preview{flex:1;display:flex;align-items:center;justify-content:center;margin:8px 12px 6px;border-radius:6px;background:#000;overflow:hidden;position:relative;min-height:0}
 .empty{text-align:center;color:#3a3a3a;padding:20px}
 .eicon{font-size:34px;margin-bottom:10px;opacity:0.35}
 .etxt{font-size:14px;color:#444}
 .ehint{font-size:11px;color:#2a2a2a;margin-top:5px;font-family:"Courier New",monospace}
-/* Main output canvas — CSS filter applied HERE, works on iOS */
-#out{display:none;max-width:100%;max-height:100%;border-radius:3px;transform:translateZ(0)}
+/* Canvas fills the preview box */
+#out{display:none;max-width:100%;max-height:100%}
 .recbadge{display:none;align-items:center;gap:5px;position:absolute;top:9px;right:9px;background:rgba(0,0,0,0.72);padding:3px 9px;border-radius:3px;font-size:10px;color:#ff5555;font-family:"Courier New",monospace;z-index:10}
 .recbadge.on{display:flex}
 .dot{width:6px;height:6px;background:#ff5555;border-radius:50%;animation:blink 1s infinite}
@@ -49,7 +49,7 @@ input[type=range]{width:100%;accent-color:#c75b39;height:20px;cursor:pointer;tou
     <button class="openbtn" id="btnOpen">Open Video</button>
     <input type="file" id="fileIn" accept="video/*" style="display:none">
   </div>
-  <div class="preview" id="prevWrap">
+  <div class="preview">
     <div class="empty" id="empty">
       <div class="eicon">🎬</div>
       <div class="etxt">Tap Open Video to start</div>
@@ -61,14 +61,14 @@ input[type=range]{width:100%;accent-color:#c75b39;height:20px;cursor:pointer;tou
   <div class="ctrls">
     <div class="crow">
       <div class="cg">
-        <div class="ctop"><span class="cl">Intensity</span><span class="cv" id="iLbl">100%</span></div>
-        <input type="range" id="sInt" min="0" max="1.5" step="0.05" value="1.0">
-        <div class="cbot"><span>off</span><span>full poqo</span></div>
+        <div class="ctop"><span class="cl">Vignette</span><span class="cv" id="vLbl">100%</span></div>
+        <input type="range" id="sVig" min="0" max="2" step="0.05" value="1.0">
+        <div class="cbot"><span>flat</span><span>dark edges</span></div>
       </div>
       <div class="cg">
-        <div class="ctop"><span class="cl">Blur</span><span class="cv" id="bLbl">100%</span></div>
-        <input type="range" id="sBlur" min="0" max="3" step="0.1" value="1.0">
-        <div class="cbot"><span>sharp</span><span>soft</span></div>
+        <div class="ctop"><span class="cl">Coolness</span><span class="cv" id="cLbl">100%</span></div>
+        <input type="range" id="sCool" min="0" max="2" step="0.05" value="1.0">
+        <div class="cbot"><span>neutral</span><span>cold</span></div>
       </div>
     </div>
     <div class="tsrow">
@@ -81,29 +81,33 @@ input[type=range]{width:100%;accent-color:#c75b39;height:20px;cursor:pointer;tou
 </div>
 
 <video id="vid" playsinline muted loop webkit-playsinline style="display:none"></video>
+<canvas id="tmpC" style="display:none"></canvas>
 
 <script>
 const vid=document.getElementById('vid');
 const out=document.getElementById('out');
+const tmpC=document.getElementById('tmpC');
 const empty=document.getElementById('empty');
 const recBadge=document.getElementById('recBadge');
 const statEl=document.getElementById('stat');
 const btnOpen=document.getElementById('btnOpen');
 const fileIn=document.getElementById('fileIn');
-const sInt=document.getElementById('sInt');
-const sBlur=document.getElementById('sBlur');
+const sVig=document.getElementById('sVig');
+const sCool=document.getElementById('sCool');
 const tsIn=document.getElementById('tsIn');
 const exportArea=document.getElementById('exportArea');
-const iLbl=document.getElementById('iLbl');
-const bLbl=document.getElementById('bLbl');
+const vLbl=document.getElementById('vLbl');
+const cLbl=document.getElementById('cLbl');
 
-let ctx, hasVideo=false, rafId=null;
-let intensity=1.0, blurScale=1.0, autoTs='';
+let ctx, tCtx;
+let hasVideo=false, rafId=null;
+let vigAmt=1.0, coolAmt=1.0, autoTs='';
 let recorder=null, chunks=[], isRec=false, canExport=false;
+let W=0, H=0;
 
-// Noise canvas — small, stamped onto output
-const noiseC=document.createElement('canvas');
-let nCtx=null, lastNoise=0, noiseImg=null;
+// Output canvas is 16:9, displayed with black bars (letterbox) like real poqo
+// Canvas width = preview width, height = width * 9/16
+// Surrounded by black background of preview div
 
 function setStatus(s){statEl.textContent=s;}
 
@@ -114,117 +118,110 @@ function gauss(){
   return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
 }
 
-function refreshNoise(W,H){
-  // Refresh grain at ~10fps
-  const now=performance.now();
-  if(now-lastNoise<100&&noiseImg)return;
-  lastNoise=now;
-  const nW=Math.round(W/4), nH=Math.round(H/4);
-  if(noiseC.width!==nW||noiseC.height!==nH){noiseC.width=nW;noiseC.height=nH;nCtx=noiseC.getContext('2d');}
+// Small digital noise — like a real cheap sensor, not heavy film grain
+const noiseC=document.createElement('canvas');
+let nCtx=null, lastNoise=0;
+function refreshNoise(){
+  const nW=Math.ceil(W/6), nH=Math.ceil(H/6);
+  if(noiseC.width!==nW||noiseC.height!==nH){
+    noiseC.width=nW; noiseC.height=nH;
+    nCtx=noiseC.getContext('2d');
+  }
   const id=nCtx.createImageData(nW,nH), d=id.data;
-  const std=20*intensity;
+  // Light digital noise std ~12 — subtle, like a real cheap sensor
+  const std=12;
   for(let i=0;i<d.length;i+=4){
     const n=(gauss()*std+128)|0, v=n<0?0:n>255?255:n;
-    d[i]=d[i+1]=d[i+2]=v; d[i+3]=55;
+    d[i]=d[i+1]=d[i+2]=v; d[i+3]=28;
   }
   nCtx.putImageData(id,0,0);
-  noiseImg=noiseC;
 }
 
 function renderFrame(){
   rafId=requestAnimationFrame(renderFrame);
   if(!hasVideo||vid.readyState<2)return;
 
-  const W=out.width, H=out.height;
-
-  // Step 1: draw video frame with CSS filter applied to an offscreen canvas
-  // This is the iOS-compatible way — filter on canvas drawImage source
-  const i=intensity;
-  const blur=(i*blurScale*2.0).toFixed(2);
-  const contrast=(1-(0.18*i)).toFixed(3);
-  const brightness=(1+(0.14*i)).toFixed(3);
-  const saturate=(1-(0.28*i)).toFixed(3);
-  const hue=(i*-10).toFixed(1);
-
-  // Apply filter via CSS on a temp canvas, draw video into it
-  const tmp=document.createElement('canvas');
-  tmp.width=W; tmp.height=H;
-  const tCtx=tmp.getContext('2d');
-  tCtx.filter=`contrast(${contrast}) brightness(${brightness}) saturate(${saturate}) hue-rotate(${hue}deg) blur(${blur}px)`;
+  // 1. Draw video to tmpC with colour grade
+  // Real poqo: cool blue-grey, lifted blacks, slight desaturation, minimal blur
+  const blurPx=(0.8).toFixed(1); // very slight softness only
+  const cool=coolAmt;
+  tCtx.filter=`blur(${blurPx}px) contrast(0.85) brightness(1.12) saturate(0.80) hue-rotate(${(-15*cool).toFixed(0)}deg)`;
   tCtx.drawImage(vid,0,0,W,H);
   tCtx.filter='none';
 
-  // Step 2: draw to output
-  ctx.clearRect(0,0,W,H);
-  ctx.drawImage(tmp,0,0);
+  // 2. Copy to output
+  ctx.drawImage(tmpC,0,0);
 
-  // Step 3: vignette
-  const vs=0.7*i;
-  const grad=ctx.createRadialGradient(W/2,H/2,H*0.25,W/2,H/2,H*0.75);
+  // 3. Heavy radial vignette — this is the dominant visual effect in real poqo
+  // Very dark edges, bright centre — matches reference screenshots exactly
+  const vig=vigAmt;
+  const grad=ctx.createRadialGradient(W*0.5,H*0.5,H*0.05, W*0.5,H*0.5,H*0.72);
   grad.addColorStop(0,'rgba(0,0,0,0)');
-  grad.addColorStop(1,`rgba(0,0,0,${vs.toFixed(2)})`);
+  grad.addColorStop(0.45,'rgba(0,0,0,0)');
+  grad.addColorStop(0.75,`rgba(0,0,0,${(0.45*vig).toFixed(2)})`);
+  grad.addColorStop(1,`rgba(0,0,0,${(0.88*vig).toFixed(2)})`);
   ctx.fillStyle=grad;
   ctx.fillRect(0,0,W,H);
 
-  // Step 4: grain
-  if(i>0.05){
-    refreshNoise(W,H);
-    if(noiseImg){
-      ctx.globalAlpha=0.55;
-      ctx.drawImage(noiseImg,0,0,W,H);
-      ctx.globalAlpha=1;
-    }
+  // 4. Subtle digital noise (not heavy grain)
+  const now=performance.now();
+  if(now-lastNoise>120){
+    lastNoise=now;
+    refreshNoise();
+  }
+  if(nCtx){
+    ctx.globalAlpha=0.30;
+    ctx.drawImage(noiseC,0,0,W,H);
+    ctx.globalAlpha=1;
   }
 
-  // Step 5: timestamp
+  // 5. Timestamp — small, bottom left, white, exactly like reference
   const ts=tsIn.value.trim()||autoTs;
   if(ts){
     const sc=W/1000;
-    const fs=Math.round(18*sc);
+    const fs=Math.max(10,Math.round(16*sc));
     ctx.font=`bold ${fs}px "Courier New",Courier,monospace`;
     ctx.textBaseline='bottom';
-    const tx=Math.round(10*sc), ty=H-Math.round(12*sc);
-    ctx.fillStyle='rgba(0,0,0,0.75)';
+    const tx=Math.round(8*sc), ty=H-Math.round(10*sc);
+    ctx.fillStyle='rgba(0,0,0,0.6)';
     ctx.fillText(ts,tx+1,ty+1);
-    ctx.fillStyle='rgba(255,255,255,0.92)';
+    ctx.fillStyle='rgba(255,255,255,0.88)';
     ctx.fillText(ts,tx,ty);
   }
+}
+
+function setupCanvases(vw,vh){
+  // Cap width for mobile performance
+  const maxW=window.innerWidth<=428?480:800;
+  W=Math.min(vw,maxW);
+  H=Math.round(vh*(W/vw));
+  out.width=W; out.height=H;
+  tmpC.width=W; tmpC.height=H;
+  ctx=out.getContext('2d');
+  tCtx=tmpC.getContext('2d');
 }
 
 function loadVideo(file){
   setStatus('Loading…');
   hasVideo=false;
   if(rafId){cancelAnimationFrame(rafId);rafId=null;}
-
   const d=new Date(file.lastModified), p=n=>String(n).padStart(2,'0');
   autoTs=`${d.getFullYear()}/${p(d.getMonth()+1)}/${p(d.getDate())}  ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
   tsIn.value=autoTs;
-
   vid.src=URL.createObjectURL(file);
   vid.load();
-
   vid.onloadedmetadata=()=>{
-    const vw=vid.videoWidth, vh=vid.videoHeight;
-    // Cap resolution for mobile performance
-    const maxW=window.innerWidth<=428?640:960;
-    let W=vw, H=vh;
-    if(W>maxW){H=Math.round(H*maxW/W);W=maxW;}
-    out.width=W; out.height=H;
-    ctx=out.getContext('2d');
-
+    setupCanvases(vid.videoWidth,vid.videoHeight);
     vid.play().then(()=>{
       hasVideo=true;
       empty.style.display='none';
       out.style.display='block';
-      setStatus(`${vw}×${vh} · ${(file.size/1e6).toFixed(1)}MB`);
+      setStatus(`${vid.videoWidth}×${vid.videoHeight} · ${(file.size/1e6).toFixed(1)}MB`);
       rafId=requestAnimationFrame(renderFrame);
       canExport=typeof MediaRecorder!=='undefined'&&
         ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].some(t=>MediaRecorder.isTypeSupported(t));
       renderExport();
-    }).catch(e=>{
-      setStatus('Playback error — try a different clip');
-      console.error(e);
-    });
+    }).catch(e=>{setStatus('Playback error — try a different clip');console.error(e);});
   };
   vid.onerror=()=>setStatus('Could not load — try MP4 or MOV');
 }
@@ -259,14 +256,12 @@ function startExport(){
   renderExport();
   setStatus('Recording… saves automatically at clip end');
 }
-
 function stopExport(){
   if(recorder&&recorder.state!=='inactive')recorder.stop();
   vid.loop=true; vid.onended=null;
   isRec=false; recBadge.classList.remove('on');
   renderExport(); setStatus('Saving…');
 }
-
 function saveExport(){
   const blob=new Blob(chunks,{type:'video/webm'});
   const a=document.createElement('a');
@@ -278,8 +273,8 @@ function saveExport(){
 
 btnOpen.onclick=()=>fileIn.click();
 fileIn.onchange=e=>{const f=e.target.files?.[0];if(f)loadVideo(f);e.target.value='';};
-sInt.oninput=()=>{intensity=parseFloat(sInt.value);iLbl.textContent=Math.round(intensity*100)+'%';};
-sBlur.oninput=()=>{blurScale=parseFloat(sBlur.value);bLbl.textContent=Math.round(blurScale*100)+'%';};
+sVig.oninput=()=>{vigAmt=parseFloat(sVig.value);vLbl.textContent=Math.round(vigAmt*100)+'%';};
+sCool.oninput=()=>{coolAmt=parseFloat(sCool.value);cLbl.textContent=Math.round(coolAmt*100)+'%';};
 tsIn.oninput=()=>{};
 </script>
 </body>
