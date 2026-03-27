@@ -4,332 +4,281 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>POQO Video Filter</title>
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>POQO Filter</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;background:#111;overflow:hidden;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;color:#e0e0e0}
-#app{display:flex;flex-direction:column;height:calc(100vh - 56px);margin-top:56px;background:#111}
-.hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #222;flex-shrink:0}
+html,body{min-height:100%;background:#111;color:#e0e0e0;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif}
+#app{display:flex;flex-direction:column;min-height:100vh;padding-bottom:20px}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #222;flex-shrink:0;position:sticky;top:0;background:#111;z-index:50}
 .logo{font-size:18px;font-weight:700;color:#c75b39;letter-spacing:2px;font-family:"Courier New",monospace}
 .sub{font-size:11px;color:#555;margin-left:8px}
-.openbtn{padding:8px 16px;background:#1e1e1e;border:1px solid #333;border-radius:6px;color:#bbb;font-size:13px;cursor:pointer;-webkit-appearance:none}
-.preview{flex:1;display:flex;align-items:center;justify-content:center;margin:8px 12px 6px;border-radius:6px;background:#000;overflow:hidden;position:relative;min-height:0}
-.empty{text-align:center;color:#3a3a3a;padding:20px}
-.eicon{font-size:34px;margin-bottom:10px;opacity:0.35}
-.etxt{font-size:14px;color:#444}
-.ehint{font-size:11px;color:#2a2a2a;margin-top:5px;font-family:"Courier New",monospace}
-/* Output rendered pixelated — nearest-neighbor upscale = blocky VHS look */
-#out{display:none;max-width:100%;max-height:100%;image-rendering:pixelated;image-rendering:-moz-crisp-edges;image-rendering:crisp-edges}
-.recbadge{display:none;align-items:center;gap:5px;position:absolute;top:9px;right:9px;background:rgba(0,0,0,0.72);padding:3px 9px;border-radius:3px;font-size:10px;color:#ff5555;font-family:"Courier New",monospace;z-index:10}
-.recbadge.on{display:flex}
-.dot{width:6px;height:6px;background:#ff5555;border-radius:50%;animation:blink 1s infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
-.ctrls{background:#161616;border-radius:8px;padding:9px 12px;margin:0 12px 6px;border:1px solid #1e1e1e;flex-shrink:0}
-.crow{display:flex;gap:12px;margin-bottom:7px}
+.open-btn{padding:8px 18px;background:#c75b39;border:none;border-radius:6px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;-webkit-appearance:none}
+
+/* Drop zone */
+.drop{margin:16px;border:2px dashed #2a2a2a;border-radius:12px;padding:36px 20px;text-align:center;cursor:pointer}
+.drop.drag{border-color:#c75b39;background:#130e0b}
+.drop-title{font-size:15px;color:#444;margin-bottom:6px}
+.drop-hint{font-size:11px;color:#2a2a2a;font-family:"Courier New",monospace}
+
+/* Controls */
+.ctrls{margin:0 16px 12px;background:#161616;border-radius:8px;padding:12px 14px;border:1px solid #1e1e1e}
+.crow{display:flex;gap:14px;margin-bottom:8px}
 .cg{flex:1}
 .ctop{display:flex;justify-content:space-between;margin-bottom:2px}
 .cl{font-size:10px;color:#666}
 .cv{font-size:10px;color:#555;font-family:"Courier New",monospace}
-input[type=range]{width:100%;accent-color:#c75b39;height:20px;cursor:pointer;touch-action:manipulation}
+input[type=range]{width:100%;accent-color:#c75b39;height:20px;touch-action:manipulation}
 .cbot{display:flex;justify-content:space-between;font-size:9px;color:#333}
-.tsrow{display:flex;align-items:center;gap:8px;margin-bottom:7px}
-.tsl{font-size:10px;color:#666;white-space:nowrap}
-.tsi{flex:1;padding:5px 7px;background:#0d0d0d;border:1px solid #252525;border-radius:4px;color:#bbb;font-family:"Courier New",monospace;font-size:11px;outline:none;-webkit-appearance:none}
-.btnrow{display:flex;justify-content:flex-end;align-items:center}
-.xbtn{padding:8px 22px;background:#c75b39;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;-webkit-appearance:none}
-.xbtn.stop{background:#7a3520}
-.iosnote{font-size:10px;color:#555;font-family:"Courier New",monospace;text-align:right;line-height:1.6}
-.stat{font-size:10px;color:#333;padding:2px 16px 8px;font-family:"Courier New",monospace;flex-shrink:0;min-height:20px}
+
+/* Queue */
+.queue{padding:0 16px}
+.q-title{font-size:11px;color:#444;font-family:"Courier New",monospace;margin-bottom:10px}
+.card{background:#161616;border-radius:8px;overflow:hidden;border:1px solid #1e1e1e;margin-bottom:10px}
+.card-img-wrap{position:relative}
+.card-img{width:100%;display:block;aspect-ratio:16/9;object-fit:cover;background:#0a0a0a}
+.card-spinner{position:absolute;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;font-size:11px;color:#c75b39;font-family:"Courier New",monospace;display:none}
+.card-spinner.show{display:flex}
+.card-bottom{padding:8px 12px;display:flex;justify-content:space-between;align-items:center}
+.card-name{font-size:10px;color:#555;font-family:"Courier New",monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%}
+.card-actions{display:flex;gap:8px;align-items:center}
+.save-btn{padding:5px 14px;background:#c75b39;color:#fff;border:none;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;display:none}
+.save-btn.show{display:block}
+.state{font-size:10px;font-family:"Courier New",monospace;color:#444}
+.state.processing{color:#c75b39}
+.state.done{color:#5a8a5a}
+.state.error{color:#8a3e26}
+
+.stat{font-size:10px;color:#333;padding:4px 20px 0;font-family:"Courier New",monospace;min-height:20px}
 </style>
 </head>
 <body>
 <div id="app">
   <div class="hdr">
-    <div><span class="logo">POQO</span><span class="sub">Video Filter</span></div>
-    <button class="openbtn" id="btnOpen">Open Video</button>
-    <input type="file" id="fileIn" accept="video/*" style="display:none">
+    <div><span class="logo">POQO</span><span class="sub">Filter</span></div>
+    <button class="open-btn" id="btnOpen">Add Photos</button>
+    <input type="file" id="fileIn" accept="image/*" multiple style="display:none">
   </div>
-  <div class="preview">
-    <div class="empty" id="empty">
-      <div class="eicon">🎬</div>
-      <div class="etxt">Tap Open Video to start</div>
-      <div class="ehint">MP4 · MOV · Reels &amp; TikTok</div>
-    </div>
-    <canvas id="out"></canvas>
-    <div class="recbadge" id="recBadge"><div class="dot"></div>REC</div>
+
+  <div class="drop" id="drop">
+    <div class="drop-title">Tap "Add Photos" or drop here</div>
+    <div class="drop-hint">Select multiple photos at once · up to 50</div>
   </div>
-  <div class="ctrls">
+
+  <div class="ctrls" id="ctrls" style="display:none">
     <div class="crow">
       <div class="cg">
-        <div class="ctop"><span class="cl">VHS Strength</span><span class="cv" id="vLbl">100%</span></div>
-        <input type="range" id="sVhs" min="0" max="1" step="0.05" value="1.0">
-        <div class="cbot"><span>clean</span><span>destroyed</span></div>
+        <div class="ctop"><span class="cl">POQOness</span><span class="cv" id="iLbl">100%</span></div>
+        <input type="range" id="sInt" min="0" max="1.5" step="0.05" value="1.0">
+        <div class="cbot"><span>clean</span><span>grime</span></div>
       </div>
       <div class="cg">
-        <div class="ctop"><span class="cl">Scanlines</span><span class="cv" id="sLbl">100%</span></div>
-        <input type="range" id="sScan" min="0" max="1" step="0.05" value="0.8">
-        <div class="cbot"><span>off</span><span>heavy</span></div>
+        <div class="ctop"><span class="cl">Crop</span><span class="cv" id="cLbl">50%</span></div>
+        <input type="range" id="sCrop" min="0" max="1" step="0.01" value="0.5">
+        <div class="cbot"><span>top</span><span>bottom</span></div>
       </div>
     </div>
-    <div class="tsrow">
-      <span class="tsl">Timestamp</span>
-      <input type="text" id="tsIn" class="tsi" placeholder="YYYY/MM/DD  HH:MM:SS">
-    </div>
-    <div class="btnrow" id="exportArea"></div>
   </div>
-  <div class="stat" id="stat">vive un poco</div>
+
+  <div class="stat" id="stat"></div>
+  <div class="queue" id="queue"></div>
 </div>
 
-<video id="vid" playsinline muted loop webkit-playsinline style="display:none"></video>
-<!-- Low-res scratch canvas — VHS resolution ~320x240 -->
-<canvas id="loC" style="display:none"></canvas>
-
 <script>
-const vid=document.getElementById('vid');
-const out=document.getElementById('out');
-const loC=document.getElementById('loC');
-const empty=document.getElementById('empty');
-const recBadge=document.getElementById('recBadge');
-const statEl=document.getElementById('stat');
+// Steve's exact filter profile — reduced output res for iPhone (1000x562)
+const P={
+  width:1000, height:562,
+  blurRadius:2.4, redBoost:1.10, greenMult:0.96, blueMult:0.90,
+  saturation:0.82, lumaNoiseStd:9, chromaNoiseStd:5,
+  vignetteStrength:0.28, shadowLift:12, highlightClip:242,
+  contrastMult:0.90, jpegQuality:0.88,
+  tsFontSize:13, tsMarginX:7, tsMarginY:11,
+  motionBlurAngle:15, motionBlurStrength:1.5,
+};
+
+function gauss(std){
+  let u=0,v=0;
+  while(!u)u=Math.random(); while(!v)v=Math.random();
+  return std*Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
+
+function applyFilter(srcCanvas, cropY, intensity, timestamp){
+  const W=P.width, H=P.height;
+  const out=document.createElement('canvas');
+  out.width=W; out.height=H;
+  const ctx=out.getContext('2d');
+
+  const sw=srcCanvas.width, sh=srcCanvas.height;
+  const tr=16/9, sr=sw/sh;
+  let sx=0,sy=0,sW=sw,sH=sh;
+  if(sr>tr){sW=Math.round(sh*tr);sx=Math.round((sw-sW)/2);}
+  else if(sr<tr){sH=Math.round(sw/tr);sy=Math.round((sh-sH)*cropY);}
+  ctx.drawImage(srcCanvas,sx,sy,sW,sH,0,0,W,H);
+
+  // Brightness sample
+  const sd=ctx.getImageData(0,0,W,H).data;
+  let tb=0,sc2=0;
+  for(let idx=0;idx<sd.length;idx+=20*4){tb+=(sd[idx]+sd[idx+1]+sd[idx+2])/3;sc2++;}
+  const avgB=tb/sc2;
+  const dF=Math.max(0,Math.min(1,(120-avgB)/100));
+
+  const i=intensity, scale=W/2000;
+
+  // Blur
+  const bR=Math.max(0.1,P.blurRadius*i*scale);
+  if(bR>0.2){const t=document.createElement('canvas');t.width=W;t.height=H;const tc=t.getContext('2d');tc.filter=`blur(${bR}px)`;tc.drawImage(out,0,0);ctx.drawImage(t,0,0);}
+
+  // Per-pixel
+  const img=ctx.getImageData(0,0,W,H); const d=img.data;
+  const rB=1+(P.redBoost-1)*i, gM=1+(P.greenMult-1)*i, bM=1+(P.blueMult-1)*i;
+  const sat=1+(P.saturation-1)*i, con=1+(P.contrastMult-1)*i;
+  const sL=P.shadowLift*i, hC=255-(255-P.highlightClip)*i;
+  const lS=P.lumaNoiseStd*i, cS=P.chromaNoiseStd*i;
+  const vS=P.vignetteStrength*i;
+  const cxP=W/2,cyP=H/2,cxI=1/cxP,cyI=1/cyP;
+  const dNB=1+dF*1.5*i, dCD=1-dF*0.04*i;
+
+  for(let idx=0;idx<d.length;idx+=4){
+    const px=idx>>2,x=px%W,y=(px/W)|0;
+    let r=d[idx],g=d[idx+1],b=d[idx+2];
+    const ec=con*dCD;
+    r=Math.min(r*ec+sL,hC); g=Math.min(g*ec+sL,hC); b=Math.min(b*ec+sL,hC);
+    r*=rB; g*=gM; b*=bM;
+    const eS=sat-dF*0.08*i, gr=(r+g+b)/3;
+    r=gr+(r-gr)*eS; g=gr+(g-gr)*eS; b=gr+(b-gr)*eS;
+    const eL=lS*dNB;
+    if(eL>0.5){const ln=gauss(eL),pB=(r+g+b)/3,sB=Math.max(0,1-pB/100)*0.7;r+=ln+gauss(cS)+gauss(eL*sB);g+=ln+gauss(cS)+gauss(eL*sB);b+=ln+gauss(cS)+gauss(eL*sB);}
+    if(vS>0.01){const dx=(x-cxP)*cxI,dy=(y-cyP)*cyI,dist=Math.sqrt(dx*dx+dy*dy),vig=Math.max(0.25,1-vS*Math.pow(Math.max(0,dist-0.4),1.5));r*=vig;g*=vig;b*=vig;}
+    d[idx]=r<0?0:r>255?255:(r+0.5)|0;
+    d[idx+1]=g<0?0:g>255?255:(g+0.5)|0;
+    d[idx+2]=b<0?0:b>255?255:(b+0.5)|0;
+  }
+  ctx.putImageData(img,0,0);
+
+  // Timestamp
+  if(timestamp){
+    const fs=P.tsFontSize, mx=P.tsMarginX, my=P.tsMarginY;
+    ctx.font=`bold ${fs}px "Courier New",Courier,monospace`;
+    ctx.textBaseline='bottom';
+    ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillText(timestamp,mx+1,H-my+1);
+    ctx.fillStyle='rgba(255,255,255,0.92)'; ctx.fillText(timestamp,mx,H-my);
+  }
+  return out;
+}
+
+// ── UI ─────────────────────────────────────────────────────────────
 const btnOpen=document.getElementById('btnOpen');
 const fileIn=document.getElementById('fileIn');
-const sVhs=document.getElementById('sVhs');
-const sScan=document.getElementById('sScan');
-const tsIn=document.getElementById('tsIn');
-const exportArea=document.getElementById('exportArea');
-const vLbl=document.getElementById('vLbl');
-const sLbl=document.getElementById('sScan');
+const drop=document.getElementById('drop');
+const ctrls=document.getElementById('ctrls');
+const queue=document.getElementById('queue');
+const statEl=document.getElementById('stat');
+const sInt=document.getElementById('sInt');
+const sCrop=document.getElementById('sCrop');
+const iLbl=document.getElementById('iLbl');
+const cLbl=document.getElementById('cLbl');
 
-let outCtx, loCtx;
-let hasVideo=false, rafId=null;
-let vhsAmt=1.0, scanAmt=0.8, autoTs='';
-let recorder=null, chunks=[], isRec=false, canExport=false;
-// VHS resolution — this IS the pixelation. Draw at this size, upscale blocky.
-let LW=320, LH=180;
-// Display canvas is bigger for screen fit, image-rendering:pixelated does the blocky upscale
-let DW=0, DH=0;
-
-function setStatus(s){statEl.textContent=s;}
-
-function gauss(){
-  let u=0,v=0;
-  while(!u)u=Math.random();
-  while(!v)v=Math.random();
-  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
-}
-
-function clamp(v){return v<0?0:v>255?255:v|0;}
-
-function renderFrame(){
-  rafId=requestAnimationFrame(renderFrame);
-  if(!hasVideo||vid.readyState<2)return;
-
-  // Step 1: Draw video at VHS resolution (320x180) — this creates pixelation
-  loCtx.drawImage(vid, 0, 0, LW, LH);
-
-  // Step 2: Get pixel data at LOW resolution
-  const imgData = loCtx.getImageData(0, 0, LW, LH);
-  const d = imgData.data;
-  const vhs = vhsAmt;
-
-  // Step 3: Per-pixel processing at low res (fast — only 320x180 = 57600 pixels)
-  for(let y=0; y<LH; y++){
-    for(let x=0; x<LW; x++){
-      const i = (y*LW+x)*4;
-      let r=d[i], g=d[i+1], b=d[i+2];
-
-      // VHS colour grade: warm/greenish, faded, low contrast
-      // Lift blacks
-      r = r*0.75 + 28;
-      g = g*0.75 + 28;
-      b = b*0.75 + 24;
-
-      // Warm green-yellow cast (classic VHS)
-      r = r + 15*vhs;
-      g = g + 8*vhs;
-      b = b - 12*vhs;
-
-      // Desaturate
-      const gray=(r+g+b)/3;
-      r = gray + (r-gray)*0.70;
-      g = gray + (g-gray)*0.70;
-      b = gray + (b-gray)*0.70;
-
-      // Heavy noise — VHS is very noisy
-      const n = gauss()*22*vhs;
-      r+=n; g+=n; b+=n;
-
-      // Scanlines — darken every other row
-      if(y%2===0){
-        const sc = scanAmt * 0.45;
-        r*=(1-sc); g*=(1-sc); b*=(1-sc);
-      }
-
-      // Vignette at low res
-      const cx=LW/2, cy=LH/2;
-      const dx=(x-cx)/cx, dy=(y-cy)/cy;
-      const dist=Math.sqrt(dx*dx+dy*dy);
-      const vig=Math.max(0, 1 - Math.pow(Math.max(0,dist-0.3)/0.7, 1.6)*vhs*0.85);
-      r*=vig; g*=vig; b*=vig;
-
-      d[i]   = clamp(r);
-      d[i+1] = clamp(g);
-      d[i+2] = clamp(b);
-    }
-  }
-
-  // Step 4: Chromatic aberration — shift R left, B right (horizontal colour bleed)
-  // Classic VHS chroma smear
-  const aberr = Math.round(3*vhs);
-  if(aberr>0){
-    const tmp = new Uint8ClampedArray(d.length);
-    for(let y=0;y<LH;y++){
-      for(let x=0;x<LW;x++){
-        const i=(y*LW+x)*4;
-        // R channel shifted left
-        const rx = Math.max(0, x-aberr);
-        const ri = (y*LW+rx)*4;
-        // B channel shifted right
-        const bx = Math.min(LW-1, x+aberr);
-        const bi = (y*LW+bx)*4;
-        tmp[i]   = d[ri];   // R from left
-        tmp[i+1] = d[i+1];  // G same
-        tmp[i+2] = d[bi+2]; // B from right
-        tmp[i+3] = 255;
-      }
-    }
-    for(let j=0;j<d.length;j++) d[j]=tmp[j];
-  }
-
-  // Step 5: Horizontal colour bleed (chroma smear) — smear every 4th pixel
-  for(let y=0;y<LH;y++){
-    let pr=0,pg=0,pb=0;
-    for(let x=0;x<LW;x++){
-      const i=(y*LW+x)*4;
-      // Blend with previous pixel colour (smear)
-      const bleed=0.35*vhs;
-      d[i]   = clamp(d[i]   *(1-bleed) + pr*bleed);
-      d[i+1] = clamp(d[i+1] *(1-bleed) + pg*bleed);
-      d[i+2] = clamp(d[i+2] *(1-bleed) + pb*bleed);
-      pr=d[i]; pg=d[i+1]; pb=d[i+2];
-    }
-  }
-
-  // Step 6: Put back to low-res canvas
-  loCtx.putImageData(imgData, 0, 0);
-
-  // Step 7: Draw to OUTPUT canvas at FULL display size
-  // image-rendering:pixelated on #out makes this blocky — the VHS pixel look
-  outCtx.imageSmoothingEnabled = false;
-  outCtx.drawImage(loC, 0, 0, LW, LH, 0, 0, DW, DH);
-
-  // Step 8: Timestamp — drawn at display size so it's readable
-  const ts=tsIn.value.trim()||autoTs;
-  if(ts){
-    const fs=Math.max(10, Math.round(DW/28));
-    outCtx.font=`bold ${fs}px "Courier New",Courier,monospace`;
-    outCtx.textBaseline='bottom';
-    const tx=10, ty=DH-10;
-    outCtx.fillStyle='rgba(0,0,0,0.65)';
-    outCtx.fillText(ts,tx+1,ty+1);
-    outCtx.fillStyle='rgba(255,255,255,0.88)';
-    outCtx.fillText(ts,tx,ty);
-  }
-}
-
-function setupCanvases(vw,vh){
-  // Maintain aspect ratio of source
-  const aspect=vw/vh;
-  // VHS internal resolution preserving aspect
-  LH=180;
-  LW=Math.round(LH*aspect);
-  loC.width=LW; loC.height=LH;
-  loCtx=loC.getContext('2d');
-  loCtx.imageSmoothingEnabled=true;
-
-  // Display canvas — fit to screen
-  const maxW=Math.min(window.innerWidth-24, 600);
-  DW=maxW;
-  DH=Math.round(DW/aspect);
-  out.width=DW; out.height=DH;
-  outCtx=out.getContext('2d');
-  outCtx.imageSmoothingEnabled=false;
-}
-
-function loadVideo(file){
-  setStatus('Loading…');
-  hasVideo=false;
-  if(rafId){cancelAnimationFrame(rafId);rafId=null;}
-  const d=new Date(file.lastModified), p=n=>String(n).padStart(2,'0');
-  autoTs=`${d.getFullYear()}/${p(d.getMonth()+1)}/${p(d.getDate())}  ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
-  tsIn.value=autoTs;
-  vid.src=URL.createObjectURL(file);
-  vid.load();
-  vid.onloadedmetadata=()=>{
-    setupCanvases(vid.videoWidth,vid.videoHeight);
-    vid.play().then(()=>{
-      hasVideo=true;
-      empty.style.display='none';
-      out.style.display='block';
-      setStatus(`${vid.videoWidth}×${vid.videoHeight} → VHS 320×180`);
-      rafId=requestAnimationFrame(renderFrame);
-      canExport=typeof MediaRecorder!=='undefined'&&
-        ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].some(t=>MediaRecorder.isTypeSupported(t));
-      renderExport();
-    }).catch(e=>{setStatus('Playback error — try a different clip');console.error(e);});
-  };
-  vid.onerror=()=>setStatus('Could not load — try MP4 or MOV');
-}
-
-function renderExport(){
-  exportArea.innerHTML='';
-  if(canExport){
-    const btn=document.createElement('button');
-    btn.className='xbtn'+(isRec?' stop':'');
-    btn.textContent=isRec?'Stop & Save':'Export WebM';
-    btn.onclick=isRec?stopExport:startExport;
-    exportArea.appendChild(btn);
-  } else {
-    const n=document.createElement('span');
-    n.className='iosnote';
-    n.innerHTML='Preview on iOS —<br>screen record to save';
-    exportArea.appendChild(n);
-  }
-}
-
-function startExport(){
-  const mime=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(t=>MediaRecorder.isTypeSupported(t));
-  const stream=out.captureStream(30);
-  chunks=[];
-  recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:8000000});
-  recorder.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
-  recorder.onstop=saveExport;
-  vid.loop=false; vid.currentTime=0; vid.play();
-  vid.onended=stopExport;
-  recorder.start(200);
-  isRec=true; recBadge.classList.add('on');
-  renderExport();
-  setStatus('Recording… saves automatically at clip end');
-}
-function stopExport(){
-  if(recorder&&recorder.state!=='inactive')recorder.stop();
-  vid.loop=true; vid.onended=null;
-  isRec=false; recBadge.classList.remove('on');
-  renderExport(); setStatus('Saving…');
-}
-function saveExport(){
-  const blob=new Blob(chunks,{type:'video/webm'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob); a.download='poqo_vhs.webm';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
-  setStatus(`Saved · ${(blob.size/1e6).toFixed(1)}MB`);
-}
+sInt.oninput=()=>iLbl.textContent=Math.round(parseFloat(sInt.value)*100)+'%';
+sCrop.oninput=()=>cLbl.textContent=Math.round(parseFloat(sCrop.value)*100)+'%';
 
 btnOpen.onclick=()=>fileIn.click();
-fileIn.onchange=e=>{const f=e.target.files?.[0];if(f)loadVideo(f);e.target.value='';};
-sVhs.oninput=()=>{vhsAmt=parseFloat(sVhs.value);vLbl.textContent=Math.round(vhsAmt*100)+'%';};
-sScan.oninput=()=>{scanAmt=parseFloat(sScan.value);document.getElementById('sLbl').textContent=Math.round(scanAmt*100)+'%';};
+drop.onclick=()=>fileIn.click();
+drop.ondragover=e=>{e.preventDefault();drop.classList.add('drag');};
+drop.ondragleave=()=>drop.classList.remove('drag');
+drop.ondrop=e=>{e.preventDefault();drop.classList.remove('drag');handleFiles(e.dataTransfer.files);};
+fileIn.onchange=e=>{handleFiles(e.target.files);e.target.value='';};
+
+let processing=false;
+let pendingQueue=[];
+
+function handleFiles(fileList){
+  const imgs=Array.from(fileList).filter(f=>f.type.startsWith('image/')).slice(0,50);
+  if(!imgs.length)return;
+  ctrls.style.display='block';
+  drop.style.display='none';
+
+  imgs.forEach(f=>{
+    const id='c'+Date.now()+Math.random();
+    pendingQueue.push({id,file:f});
+    addCard(id,f);
+  });
+
+  statEl.textContent=`${pendingQueue.length} photo${pendingQueue.length>1?'s':''} queued`;
+  if(!processing)processNext();
+}
+
+function addCard(id,file){
+  const url=URL.createObjectURL(file);
+  const card=document.createElement('div');
+  card.className='card'; card.id=id;
+  card.innerHTML=`
+    <div class="card-img-wrap">
+      <img class="card-img" id="img-${id}" src="${url}">
+      <div class="card-spinner" id="spin-${id}">processing…</div>
+    </div>
+    <div class="card-bottom">
+      <span class="card-name">${file.name}</span>
+      <div class="card-actions">
+        <span class="card-state" id="state-${id}">waiting</span>
+        <button class="save-btn" id="save-${id}">Save</button>
+      </div>
+    </div>`;
+  queue.appendChild(card);
+}
+
+async function processNext(){
+  if(!pendingQueue.length){processing=false;return;}
+  processing=true;
+  const {id,file}=pendingQueue.shift();
+
+  const stateEl=document.getElementById(`state-${id}`);
+  const spinEl=document.getElementById(`spin-${id}`);
+  const imgEl=document.getElementById(`img-${id}`);
+  const saveBtn=document.getElementById(`save-${id}`);
+
+  stateEl.className='card-state processing';
+  stateEl.textContent='processing…';
+  spinEl.classList.add('show');
+
+  await new Promise(r=>setTimeout(r,20)); // let UI update
+
+  try{
+    const bitmap=await createImageBitmap(file);
+    const srcC=document.createElement('canvas');
+    srcC.width=bitmap.width; srcC.height=bitmap.height;
+    srcC.getContext('2d').drawImage(bitmap,0,0);
+    bitmap.close();
+
+    const d=new Date(file.lastModified), p=n=>String(n).padStart(2,'0');
+    const ts=`${d.getFullYear()}/${p(d.getMonth()+1)}/${p(d.getDate())}  ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+
+    const result=applyFilter(srcC, parseFloat(sCrop.value), parseFloat(sInt.value), ts);
+
+    // Show result
+    imgEl.src=result.toDataURL('image/jpeg', P.jpegQuality);
+    spinEl.classList.remove('show');
+    stateEl.className='card-state done';
+    stateEl.textContent='done';
+
+    // Save button — opens image so user can long-press save to camera roll
+    saveBtn.classList.add('show');
+    saveBtn.onclick=()=>{
+      const url=result.toDataURL('image/jpeg', P.jpegQuality);
+      const w=window.open('');
+      w.document.write(`<img src="${url}" style="max-width:100%;display:block"><p style="font-family:sans-serif;color:#888;font-size:13px;padding:8px">Press and hold the image → Save to Photos</p>`);
+    };
+
+  } catch(e){
+    spinEl.classList.remove('show');
+    stateEl.className='card-state error';
+    stateEl.textContent='error';
+  }
+
+  const remaining=pendingQueue.length;
+  statEl.textContent=remaining>0?`${remaining} remaining…`:'All done — tap Save on each photo';
+  await new Promise(r=>setTimeout(r,50));
+  processNext();
+}
 </script>
 </body>
 </html>
