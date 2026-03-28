@@ -13,17 +13,9 @@ html,body{min-height:100%;background:#111;color:#e0e0e0;font-family:"Helvetica N
 .logo{font-size:18px;font-weight:700;color:#c75b39;letter-spacing:2px;font-family:"Courier New",monospace}
 .sub{font-size:11px;color:#555;margin-left:8px}
 .addbtn{padding:8px 18px;background:#c75b39;border:none;border-radius:6px;color:#fff;font-size:13px;font-weight:700;cursor:pointer}
-.drop{margin:16px;border:2px dashed #222;border-radius:12px;padding:40px 20px;text-align:center;cursor:pointer}
-.drop-title{font-size:15px;color:#444;margin-bottom:6px}
+.drop{margin:20px 16px;border:2px dashed #222;border-radius:12px;padding:48px 20px;text-align:center;cursor:pointer}
+.drop-title{font-size:16px;color:#444;margin-bottom:8px}
 .drop-hint{font-size:11px;color:#2a2a2a;font-family:"Courier New",monospace}
-.ctrls{margin:0 16px 14px;background:#161616;border-radius:8px;padding:12px 14px;border:1px solid #1e1e1e;display:none}
-.crow{display:flex;gap:14px;margin-bottom:6px}
-.cg{flex:1}
-.ctop{display:flex;justify-content:space-between;margin-bottom:2px}
-.cl{font-size:10px;color:#666}
-.cv{font-size:10px;color:#555;font-family:"Courier New",monospace}
-input[type=range]{width:100%;accent-color:#c75b39;height:20px;touch-action:manipulation}
-.cbot{display:flex;justify-content:space-between;font-size:9px;color:#333}
 .queue{padding:0 16px}
 .card{background:#161616;border-radius:8px;overflow:hidden;border:1px solid #1e1e1e;margin-bottom:12px}
 .card-img{width:100%;display:block;aspect-ratio:16/9;object-fit:cover;background:#0a0a0a}
@@ -33,8 +25,8 @@ input[type=range]{width:100%;accent-color:#c75b39;height:20px;touch-action:manip
 .state.proc{color:#c75b39}
 .state.done{color:#5a8a5a}
 .state.err{color:#8a3e26}
-.savebtn{padding:6px 16px;background:#c75b39;color:#fff;border:none;border-radius:4px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:none}
-.stat{font-size:10px;color:#333;padding:4px 20px 0;font-family:"Courier New",monospace}
+.savebtn{padding:6px 18px;background:#c75b39;color:#fff;border:none;border-radius:4px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:none}
+.stat{font-size:10px;color:#333;padding:4px 20px 10px;font-family:"Courier New",monospace}
 </style>
 </head>
 <body>
@@ -45,36 +37,28 @@ input[type=range]{width:100%;accent-color:#c75b39;height:20px;touch-action:manip
     <input type="file" id="fileIn" accept="image/*" multiple style="display:none">
   </div>
   <div class="drop" id="drop">
-    <div class="drop-title">Tap Add Photos to get started</div>
-    <div class="drop-hint">Select multiple at once · up to 50</div>
-  </div>
-  <div class="ctrls" id="ctrls">
-    <div class="crow">
-      <div class="cg">
-        <div class="ctop"><span class="cl">POQOness</span><span class="cv" id="iLbl">100%</span></div>
-        <input type="range" id="sInt" min="0" max="1.5" step="0.05" value="1.0">
-        <div class="cbot"><span>clean</span><span>full poqo</span></div>
-      </div>
-      <div class="cg">
-        <div class="ctop"><span class="cl">Crop</span><span class="cv" id="cLbl">50%</span></div>
-        <input type="range" id="sCrop" min="0" max="1" step="0.01" value="0.5">
-        <div class="cbot"><span>top</span><span>bottom</span></div>
-      </div>
-    </div>
+    <div class="drop-title">Tap Add Photos to start</div>
+    <div class="drop-hint">Select up to 50 · auto-processed to poqo quality</div>
   </div>
   <div class="stat" id="stat"></div>
   <div class="queue" id="queue"></div>
 </div>
 <script>
-// ── Steve's EXACT profile, nothing changed ────────────────────────
-const P={
-  W:1200, H:675, // 1200px wide — good quality, won't crash iPhone
-  blurRadius:2.4, redBoost:1.10, greenMult:0.96, blueMult:0.90,
-  saturation:0.82, lumaNoiseStd:9, chromaNoiseStd:5,
-  vignetteStrength:0.28, shadowLift:12, highlightClip:242,
-  contrastMult:0.90, jpegQuality:0.88,
-  tsFontSize:16, tsMarginX:8, tsMarginY:13,
-};
+// Steve's exact values — hardcoded at intensity=1.0, no slider
+const I = 1.0; // intensity fixed at full
+const W = 1200, H = 675; // output size safe for iPhone
+const BLUR_R = 2.4 * I * (W/2000); // ~1.44px
+const RED_B  = 1 + (1.10-1)*I;     // 1.10
+const GRN_M  = 1 + (0.96-1)*I;     // 0.96
+const BLU_M  = 1 + (0.90-1)*I;     // 0.90
+const SAT    = 1 + (0.82-1)*I;     // 0.82
+const CON    = 1 + (0.90-1)*I;     // 0.90
+const S_LIFT = 12 * I;             // 12
+const H_CLIP = 255-(255-242)*I;    // 242
+const L_STD  = 9  * I;             // 9
+const C_STD  = 5  * I;             // 5
+const VIG    = 0.28 * I;           // 0.28
+const TS_FS  = 16, TS_MX=8, TS_MY=13;
 
 function gauss(std){
   let u=0,v=0;
@@ -82,8 +66,75 @@ function gauss(std){
   return std*Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
 }
 
-function applyFilter(src, cropY, intensity, ts){
-  const W=P.W, H=P.H;
+// Pure JS box blur — works on iOS Safari unlike ctx.filter
+function boxBlurH(d, w, h, r){
+  const out=new Uint8ClampedArray(d.length);
+  const iarr=1/(r+r+1);
+  for(let i=0;i<h;i++){
+    let ti=i*w*4, li=ti, ri=ti+r*4;
+    let fv=[d[ti],d[ti+1],d[ti+2]], lv=[d[ti+(w-1)*4],d[ti+(w-1)*4+1],d[ti+(w-1)*4+2]];
+    let val=[fv[0]*(r+1),fv[1]*(r+1),fv[2]*(r+1)];
+    for(let j=0;j<r;j++){val[0]+=d[ti+j*4];val[1]+=d[ti+j*4+1];val[2]+=d[ti+j*4+2];}
+    for(let j=0;j<=r;j++){
+      val[0]+=d[ri]-fv[0];val[1]+=d[ri+1]-fv[1];val[2]+=d[ri+2]-fv[2];
+      out[ti]=val[0]*iarr|0;out[ti+1]=val[1]*iarr|0;out[ti+2]=val[2]*iarr|0;out[ti+3]=255;
+      ri+=4;ti+=4;
+    }
+    for(let j=r+1;j<w-r;j++){
+      val[0]+=d[ri]-d[li];val[1]+=d[ri+1]-d[li+1];val[2]+=d[ri+2]-d[li+2];
+      out[ti]=val[0]*iarr|0;out[ti+1]=val[1]*iarr|0;out[ti+2]=val[2]*iarr|0;out[ti+3]=255;
+      li+=4;ri+=4;ti+=4;
+    }
+    for(let j=w-r;j<w;j++){
+      val[0]+=lv[0]-d[li];val[1]+=lv[1]-d[li+1];val[2]+=lv[2]-d[li+2];
+      out[ti]=val[0]*iarr|0;out[ti+1]=val[1]*iarr|0;out[ti+2]=val[2]*iarr|0;out[ti+3]=255;
+      li+=4;ti+=4;
+    }
+  }
+  return out;
+}
+
+function boxBlurV(d, w, h, r){
+  const out=new Uint8ClampedArray(d.length);
+  const iarr=1/(r+r+1);
+  for(let i=0;i<w;i++){
+    let ti=i*4, li=ti, ri=ti+r*w*4;
+    let fv=[d[ti],d[ti+1],d[ti+2]], lv=[d[ti+(h-1)*w*4],d[ti+(h-1)*w*4+1],d[ti+(h-1)*w*4+2]];
+    let val=[fv[0]*(r+1),fv[1]*(r+1),fv[2]*(r+1)];
+    for(let j=0;j<r;j++){val[0]+=d[ti+j*w*4];val[1]+=d[ti+j*w*4+1];val[2]+=d[ti+j*w*4+2];}
+    for(let j=0;j<=r;j++){
+      val[0]+=d[ri]-fv[0];val[1]+=d[ri+1]-fv[1];val[2]+=d[ri+2]-fv[2];
+      out[ti]=val[0]*iarr|0;out[ti+1]=val[1]*iarr|0;out[ti+2]=val[2]*iarr|0;out[ti+3]=255;
+      ri+=w*4;ti+=w*4;
+    }
+    for(let j=r+1;j<h-r;j++){
+      val[0]+=d[ri]-d[li];val[1]+=d[ri+1]-d[li+1];val[2]+=d[ri+2]-d[li+2];
+      out[ti]=val[0]*iarr|0;out[ti+1]=val[1]*iarr|0;out[ti+2]=val[2]*iarr|0;out[ti+3]=255;
+      li+=w*4;ri+=w*4;ti+=w*4;
+    }
+    for(let j=h-r;j<h;j++){
+      val[0]+=lv[0]-d[li];val[1]+=lv[1]-d[li+1];val[2]+=lv[2]-d[li+2];
+      out[ti]=val[0]*iarr|0;out[ti+1]=val[1]*iarr|0;out[ti+2]=val[2]*iarr|0;out[ti+3]=255;
+      li+=w*4;ti+=w*4;
+    }
+  }
+  return out;
+}
+
+function jsBlur(ctx, w, h, radius){
+  if(radius<1)return;
+  const r=Math.round(radius);
+  const img=ctx.getImageData(0,0,w,h);
+  let d=img.data;
+  d=boxBlurH(d,w,h,r);
+  d=boxBlurV(d,w,h,r);
+  d=boxBlurH(d,w,h,r);
+  d=boxBlurV(d,w,h,r);
+  img.data.set(d);
+  ctx.putImageData(img,0,0);
+}
+
+function applyFilter(src, cropY, ts){
   const out=document.createElement('canvas');
   out.width=W; out.height=H;
   const ctx=out.getContext('2d');
@@ -95,75 +146,54 @@ function applyFilter(src, cropY, intensity, ts){
   else if(sr<tr){sH=Math.round(sw/tr);sy=Math.round((sh-sH)*cropY);}
   ctx.drawImage(src,sx,sy,sW,sH,0,0,W,H);
 
-  // Sample brightness for dark-scene boost
+  // Sample brightness
   const sd=ctx.getImageData(0,0,W,H).data;
   let tb=0,sc=0;
   for(let i=0;i<sd.length;i+=40*4){tb+=(sd[i]+sd[i+1]+sd[i+2])/3;sc++;}
   const avgB=tb/sc;
   const dF=Math.max(0,Math.min(1,(120-avgB)/100));
 
-  const i=intensity, scale=W/2000;
+  // Blur pass 1 — pure JS, works on iOS
+  jsBlur(ctx, W, H, BLUR_R);
 
-  // Blur pass 1 — lens softness
-  const bR=Math.max(0.1, P.blurRadius*i*scale);
-  if(bR>0.2){
-    const t=document.createElement('canvas');t.width=W;t.height=H;
-    const tc=t.getContext('2d');tc.filter=`blur(${bR}px)`;tc.drawImage(out,0,0);
-    ctx.drawImage(t,0,0);
-  }
-
-  // Per-pixel: colour grade + noise + vignette
+  // Per-pixel colour grade + noise + vignette
   const img=ctx.getImageData(0,0,W,H), d=img.data;
-  const rB=1+(P.redBoost-1)*i;
-  const gM=1+(P.greenMult-1)*i;
-  const bM=1+(P.blueMult-1)*i;
-  const sat=1+(P.saturation-1)*i;
-  const con=1+(P.contrastMult-1)*i;
-  const sL=P.shadowLift*i;
-  const hC=255-(255-P.highlightClip)*i;
-  const lS=P.lumaNoiseStd*i;
-  const cS=P.chromaNoiseStd*i;
-  const vS=P.vignetteStrength*i;
+  const dNB=1+dF*1.5, dCD=1-dF*0.04;
+  const eS=SAT-dF*0.08;
   const cx=W/2, cy=H/2;
-  const dNB=1+dF*1.5*i;
-  const dCD=1-dF*0.04*i;
 
   for(let idx=0;idx<d.length;idx+=4){
     const px=idx>>2, x=px%W, y=(px/W)|0;
     let r=d[idx], g=d[idx+1], b=d[idx+2];
 
-    // Contrast + shadow lift + highlight clip
-    const ec=con*dCD;
-    r=Math.min(r*ec+sL,hC);
-    g=Math.min(g*ec+sL,hC);
-    b=Math.min(b*ec+sL,hC);
+    // Contrast + lift + clip
+    const ec=CON*dCD;
+    r=Math.min(r*ec+S_LIFT,H_CLIP);
+    g=Math.min(g*ec+S_LIFT,H_CLIP);
+    b=Math.min(b*ec+S_LIFT,H_CLIP);
 
-    // Colour cast — red boost, green/blue slight pull
-    r*=rB; g*=gM; b*=bM;
+    // Colour cast
+    r*=RED_B; g*=GRN_M; b*=BLU_M;
 
     // Desaturate
-    const eS=sat-dF*0.08*i;
     const gr=(r+g+b)/3;
     r=gr+(r-gr)*eS; g=gr+(g-gr)*eS; b=gr+(b-gr)*eS;
 
-    // Noise — luma + chroma
-    const eLs=lS*dNB;
+    // Noise
+    const eLs=L_STD*dNB;
     if(eLs>0.5){
       const ln=gauss(eLs);
-      const pB=(r+g+b)/3;
-      const sB=Math.max(0,1-pB/100)*0.7;
-      r+=ln+gauss(cS)+gauss(eLs*sB);
-      g+=ln+gauss(cS)+gauss(eLs*sB);
-      b+=ln+gauss(cS)+gauss(eLs*sB);
+      const pB=(r+g+b)/3, sB=Math.max(0,1-pB/100)*0.7;
+      r+=ln+gauss(C_STD)+gauss(eLs*sB);
+      g+=ln+gauss(C_STD)+gauss(eLs*sB);
+      b+=ln+gauss(C_STD)+gauss(eLs*sB);
     }
 
     // Vignette
-    if(vS>0.01){
-      const dx=(x-cx)/cx, dy=(y-cy)/cy;
-      const dist=Math.sqrt(dx*dx+dy*dy);
-      const vig=Math.max(0.25,1-vS*Math.pow(Math.max(0,dist-0.4),1.5));
-      r*=vig; g*=vig; b*=vig;
-    }
+    const dx=(x-cx)/cx, dy=(y-cy)/cy;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    const vig=Math.max(0.25,1-VIG*Math.pow(Math.max(0,dist-0.4),1.5));
+    r*=vig; g*=vig; b*=vig;
 
     d[idx]  =r<0?0:r>255?255:(r+0.5)|0;
     d[idx+1]=g<0?0:g>255?255:(g+0.5)|0;
@@ -172,22 +202,16 @@ function applyFilter(src, cropY, intensity, ts){
   ctx.putImageData(img,0,0);
 
   // Blur pass 2 — compression softness
-  const b2=bR*0.35;
-  if(b2>0.2){
-    const t2=document.createElement('canvas');t2.width=W;t2.height=H;
-    const tc2=t2.getContext('2d');tc2.filter=`blur(${b2}px)`;tc2.drawImage(out,0,0);
-    ctx.drawImage(t2,0,0);
-  }
+  jsBlur(ctx, W, H, BLUR_R*0.35);
 
-  // Timestamp — exactly like Steve's app
+  // Timestamp
   if(ts){
-    const fs=P.tsFontSize, mx=P.tsMarginX, my=P.tsMarginY;
-    ctx.font=`bold ${fs}px "Courier New",Courier,monospace`;
+    ctx.font=`bold ${TS_FS}px "Courier New",Courier,monospace`;
     ctx.textBaseline='bottom';
     ctx.fillStyle='rgba(0,0,0,0.5)';
-    ctx.fillText(ts,mx+1,H-my+1);
+    ctx.fillText(ts,TS_MX+1,H-TS_MY+1);
     ctx.fillStyle='rgba(255,255,255,0.92)';
-    ctx.fillText(ts,mx,H-my);
+    ctx.fillText(ts,TS_MX,H-TS_MY);
   }
 
   return out;
@@ -197,34 +221,26 @@ function applyFilter(src, cropY, intensity, ts){
 const btnAdd=document.getElementById('btnAdd');
 const fileIn=document.getElementById('fileIn');
 const drop=document.getElementById('drop');
-const ctrls=document.getElementById('ctrls');
 const queue=document.getElementById('queue');
 const statEl=document.getElementById('stat');
-const sInt=document.getElementById('sInt');
-const sCrop=document.getElementById('sCrop');
-const iLbl=document.getElementById('iLbl');
-const cLbl=document.getElementById('cLbl');
 
-sInt.oninput=()=>iLbl.textContent=Math.round(parseFloat(sInt.value)*100)+'%';
-sCrop.oninput=()=>cLbl.textContent=Math.round(parseFloat(sCrop.value)*100)+'%';
 btnAdd.onclick=()=>fileIn.click();
 drop.onclick=()=>fileIn.click();
 fileIn.onchange=e=>{handleFiles(e.target.files);e.target.value='';};
 
-let pending=[], processing=false;
+let pending=[], busy=false;
 
 function handleFiles(list){
   const imgs=Array.from(list).filter(f=>f.type.startsWith('image/')).slice(0,50);
   if(!imgs.length)return;
   drop.style.display='none';
-  ctrls.style.display='block';
   imgs.forEach(f=>{
     const id='i'+Date.now()+Math.random().toString(36).slice(2);
     pending.push({id,file:f});
     addCard(id,f);
   });
   statEl.textContent=`${pending.length} photo${pending.length>1?'s':''} queued`;
-  if(!processing)runNext();
+  if(!busy)runNext();
 }
 
 function addCard(id,file){
@@ -242,8 +258,8 @@ function addCard(id,file){
 }
 
 async function runNext(){
-  if(!pending.length){processing=false;return;}
-  processing=true;
+  if(!pending.length){busy=false;return;}
+  busy=true;
   const {id,file}=pending.shift();
   const stEl=document.getElementById(`st-${id}`);
   const imgEl=document.getElementById(`img-${id}`);
@@ -253,38 +269,32 @@ async function runNext(){
   await new Promise(r=>setTimeout(r,30));
 
   try{
-    // Get file timestamp
     const dt=new Date(file.lastModified);
     const p=n=>String(n).padStart(2,'0');
     const ts=`${dt.getFullYear()}/${p(dt.getMonth()+1)}/${p(dt.getDate())}  ${p(dt.getHours())}:${p(dt.getMinutes())}:${p(dt.getSeconds())}`;
 
-    // Load image
     const bmp=await createImageBitmap(file);
     const src=document.createElement('canvas');
     src.width=bmp.width; src.height=bmp.height;
     src.getContext('2d').drawImage(bmp,0,0);
     bmp.close();
 
-    // Apply filter
-    const result=applyFilter(src, parseFloat(sCrop.value), parseFloat(sInt.value), ts);
-    const dataUrl=result.toDataURL('image/jpeg', P.jpegQuality);
+    const result=applyFilter(src, 0.5, ts);
+    const dataUrl=result.toDataURL('image/jpeg', 0.88);
 
-    // Update preview
     imgEl.src=dataUrl;
     stEl.className='state done'; stEl.textContent='done ✓';
-
-    // Save button — opens new tab, user long-presses to save
     svBtn.style.display='block';
     svBtn.onclick=()=>{
       const w=window.open('');
       if(w){
-        w.document.write(`<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width"><style>body{margin:0;background:#000;display:flex;flex-direction:column;align-items:center;padding:12px}img{max-width:100%;border-radius:4px}p{color:#888;font-size:13px;font-family:sans-serif;margin-top:10px;text-align:center}</style></head><body><img src="${dataUrl}"><p>Press and hold image → Save to Photos</p></body></html>`);
+        w.document.write(`<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width"><style>body{margin:0;background:#000;display:flex;flex-direction:column;align-items:center;padding:12px}img{max-width:100%;border-radius:4px}p{color:#888;font-size:13px;font-family:sans-serif;margin-top:10px;text-align:center}</style></head><body><img src="${dataUrl}"><p>Press and hold → Save to Photos</p></body></html>`);
         w.document.close();
       }
     };
-
   }catch(e){
     stEl.className='state err'; stEl.textContent='error';
+    console.error(e);
   }
 
   const rem=pending.length;
