@@ -4,73 +4,56 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>POQO Filter</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{min-height:100%;background:#111;color:#e0e0e0;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif}
-#app{display:flex;flex-direction:column;min-height:100vh;padding-bottom:20px}
-.hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #222;flex-shrink:0;position:sticky;top:0;background:#111;z-index:50}
+#app{display:flex;flex-direction:column;min-height:100vh;padding-bottom:24px}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #222;background:#111;position:sticky;top:0;z-index:50}
 .logo{font-size:18px;font-weight:700;color:#c75b39;letter-spacing:2px;font-family:"Courier New",monospace}
 .sub{font-size:11px;color:#555;margin-left:8px}
-.open-btn{padding:8px 18px;background:#c75b39;border:none;border-radius:6px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;-webkit-appearance:none}
-
-/* Drop zone */
-.drop{margin:16px;border:2px dashed #2a2a2a;border-radius:12px;padding:36px 20px;text-align:center;cursor:pointer}
-.drop.drag{border-color:#c75b39;background:#130e0b}
+.addbtn{padding:8px 18px;background:#c75b39;border:none;border-radius:6px;color:#fff;font-size:13px;font-weight:700;cursor:pointer}
+.drop{margin:16px;border:2px dashed #222;border-radius:12px;padding:40px 20px;text-align:center;cursor:pointer}
 .drop-title{font-size:15px;color:#444;margin-bottom:6px}
 .drop-hint{font-size:11px;color:#2a2a2a;font-family:"Courier New",monospace}
-
-/* Controls */
-.ctrls{margin:0 16px 12px;background:#161616;border-radius:8px;padding:12px 14px;border:1px solid #1e1e1e}
-.crow{display:flex;gap:14px;margin-bottom:8px}
+.ctrls{margin:0 16px 14px;background:#161616;border-radius:8px;padding:12px 14px;border:1px solid #1e1e1e;display:none}
+.crow{display:flex;gap:14px;margin-bottom:6px}
 .cg{flex:1}
 .ctop{display:flex;justify-content:space-between;margin-bottom:2px}
 .cl{font-size:10px;color:#666}
 .cv{font-size:10px;color:#555;font-family:"Courier New",monospace}
 input[type=range]{width:100%;accent-color:#c75b39;height:20px;touch-action:manipulation}
 .cbot{display:flex;justify-content:space-between;font-size:9px;color:#333}
-
-/* Queue */
 .queue{padding:0 16px}
-.q-title{font-size:11px;color:#444;font-family:"Courier New",monospace;margin-bottom:10px}
-.card{background:#161616;border-radius:8px;overflow:hidden;border:1px solid #1e1e1e;margin-bottom:10px}
-.card-img-wrap{position:relative}
+.card{background:#161616;border-radius:8px;overflow:hidden;border:1px solid #1e1e1e;margin-bottom:12px}
 .card-img{width:100%;display:block;aspect-ratio:16/9;object-fit:cover;background:#0a0a0a}
-.card-spinner{position:absolute;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;font-size:11px;color:#c75b39;font-family:"Courier New",monospace;display:none}
-.card-spinner.show{display:flex}
-.card-bottom{padding:8px 12px;display:flex;justify-content:space-between;align-items:center}
-.card-name{font-size:10px;color:#555;font-family:"Courier New",monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%}
-.card-actions{display:flex;gap:8px;align-items:center}
-.save-btn{padding:5px 14px;background:#c75b39;color:#fff;border:none;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;display:none}
-.save-btn.show{display:block}
-.state{font-size:10px;font-family:"Courier New",monospace;color:#444}
-.state.processing{color:#c75b39}
+.card-foot{padding:8px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card-name{font-size:10px;color:#555;font-family:"Courier New",monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.state{font-size:10px;font-family:"Courier New",monospace;color:#444;white-space:nowrap}
+.state.proc{color:#c75b39}
 .state.done{color:#5a8a5a}
-.state.error{color:#8a3e26}
-
-.stat{font-size:10px;color:#333;padding:4px 20px 0;font-family:"Courier New",monospace;min-height:20px}
+.state.err{color:#8a3e26}
+.savebtn{padding:6px 16px;background:#c75b39;color:#fff;border:none;border-radius:4px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:none}
+.stat{font-size:10px;color:#333;padding:4px 20px 0;font-family:"Courier New",monospace}
 </style>
 </head>
 <body>
 <div id="app">
   <div class="hdr">
     <div><span class="logo">POQO</span><span class="sub">Filter</span></div>
-    <button class="open-btn" id="btnOpen">Add Photos</button>
+    <button class="addbtn" id="btnAdd">Add Photos</button>
     <input type="file" id="fileIn" accept="image/*" multiple style="display:none">
   </div>
-
   <div class="drop" id="drop">
-    <div class="drop-title">Tap "Add Photos" or drop here</div>
-    <div class="drop-hint">Select multiple photos at once · up to 50</div>
+    <div class="drop-title">Tap Add Photos to get started</div>
+    <div class="drop-hint">Select multiple at once · up to 50</div>
   </div>
-
-  <div class="ctrls" id="ctrls" style="display:none">
+  <div class="ctrls" id="ctrls">
     <div class="crow">
       <div class="cg">
         <div class="ctop"><span class="cl">POQOness</span><span class="cv" id="iLbl">100%</span></div>
         <input type="range" id="sInt" min="0" max="1.5" step="0.05" value="1.0">
-        <div class="cbot"><span>clean</span><span>grime</span></div>
+        <div class="cbot"><span>clean</span><span>full poqo</span></div>
       </div>
       <div class="cg">
         <div class="ctop"><span class="cl">Crop</span><span class="cv" id="cLbl">50%</span></div>
@@ -79,95 +62,139 @@ input[type=range]{width:100%;accent-color:#c75b39;height:20px;touch-action:manip
       </div>
     </div>
   </div>
-
   <div class="stat" id="stat"></div>
   <div class="queue" id="queue"></div>
 </div>
-
 <script>
-// Steve's exact filter profile — reduced output res for iPhone (1000x562)
+// ── Steve's EXACT profile, nothing changed ────────────────────────
 const P={
-  width:1000, height:562,
+  W:1200, H:675, // 1200px wide — good quality, won't crash iPhone
   blurRadius:2.4, redBoost:1.10, greenMult:0.96, blueMult:0.90,
   saturation:0.82, lumaNoiseStd:9, chromaNoiseStd:5,
   vignetteStrength:0.28, shadowLift:12, highlightClip:242,
   contrastMult:0.90, jpegQuality:0.88,
-  tsFontSize:13, tsMarginX:7, tsMarginY:11,
-  motionBlurAngle:15, motionBlurStrength:1.5,
+  tsFontSize:16, tsMarginX:8, tsMarginY:13,
 };
 
 function gauss(std){
   let u=0,v=0;
-  while(!u)u=Math.random(); while(!v)v=Math.random();
+  while(!u)u=Math.random();while(!v)v=Math.random();
   return std*Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
 }
 
-function applyFilter(srcCanvas, cropY, intensity, timestamp){
-  const W=P.width, H=P.height;
+function applyFilter(src, cropY, intensity, ts){
+  const W=P.W, H=P.H;
   const out=document.createElement('canvas');
   out.width=W; out.height=H;
   const ctx=out.getContext('2d');
 
-  const sw=srcCanvas.width, sh=srcCanvas.height;
-  const tr=16/9, sr=sw/sh;
+  // Crop to 16:9
+  const sw=src.width, sh=src.height, tr=16/9, sr=sw/sh;
   let sx=0,sy=0,sW=sw,sH=sh;
   if(sr>tr){sW=Math.round(sh*tr);sx=Math.round((sw-sW)/2);}
   else if(sr<tr){sH=Math.round(sw/tr);sy=Math.round((sh-sH)*cropY);}
-  ctx.drawImage(srcCanvas,sx,sy,sW,sH,0,0,W,H);
+  ctx.drawImage(src,sx,sy,sW,sH,0,0,W,H);
 
-  // Brightness sample
+  // Sample brightness for dark-scene boost
   const sd=ctx.getImageData(0,0,W,H).data;
-  let tb=0,sc2=0;
-  for(let idx=0;idx<sd.length;idx+=20*4){tb+=(sd[idx]+sd[idx+1]+sd[idx+2])/3;sc2++;}
-  const avgB=tb/sc2;
+  let tb=0,sc=0;
+  for(let i=0;i<sd.length;i+=40*4){tb+=(sd[i]+sd[i+1]+sd[i+2])/3;sc++;}
+  const avgB=tb/sc;
   const dF=Math.max(0,Math.min(1,(120-avgB)/100));
 
   const i=intensity, scale=W/2000;
 
-  // Blur
-  const bR=Math.max(0.1,P.blurRadius*i*scale);
-  if(bR>0.2){const t=document.createElement('canvas');t.width=W;t.height=H;const tc=t.getContext('2d');tc.filter=`blur(${bR}px)`;tc.drawImage(out,0,0);ctx.drawImage(t,0,0);}
+  // Blur pass 1 — lens softness
+  const bR=Math.max(0.1, P.blurRadius*i*scale);
+  if(bR>0.2){
+    const t=document.createElement('canvas');t.width=W;t.height=H;
+    const tc=t.getContext('2d');tc.filter=`blur(${bR}px)`;tc.drawImage(out,0,0);
+    ctx.drawImage(t,0,0);
+  }
 
-  // Per-pixel
-  const img=ctx.getImageData(0,0,W,H); const d=img.data;
-  const rB=1+(P.redBoost-1)*i, gM=1+(P.greenMult-1)*i, bM=1+(P.blueMult-1)*i;
-  const sat=1+(P.saturation-1)*i, con=1+(P.contrastMult-1)*i;
-  const sL=P.shadowLift*i, hC=255-(255-P.highlightClip)*i;
-  const lS=P.lumaNoiseStd*i, cS=P.chromaNoiseStd*i;
+  // Per-pixel: colour grade + noise + vignette
+  const img=ctx.getImageData(0,0,W,H), d=img.data;
+  const rB=1+(P.redBoost-1)*i;
+  const gM=1+(P.greenMult-1)*i;
+  const bM=1+(P.blueMult-1)*i;
+  const sat=1+(P.saturation-1)*i;
+  const con=1+(P.contrastMult-1)*i;
+  const sL=P.shadowLift*i;
+  const hC=255-(255-P.highlightClip)*i;
+  const lS=P.lumaNoiseStd*i;
+  const cS=P.chromaNoiseStd*i;
   const vS=P.vignetteStrength*i;
-  const cxP=W/2,cyP=H/2,cxI=1/cxP,cyI=1/cyP;
-  const dNB=1+dF*1.5*i, dCD=1-dF*0.04*i;
+  const cx=W/2, cy=H/2;
+  const dNB=1+dF*1.5*i;
+  const dCD=1-dF*0.04*i;
 
   for(let idx=0;idx<d.length;idx+=4){
-    const px=idx>>2,x=px%W,y=(px/W)|0;
-    let r=d[idx],g=d[idx+1],b=d[idx+2];
+    const px=idx>>2, x=px%W, y=(px/W)|0;
+    let r=d[idx], g=d[idx+1], b=d[idx+2];
+
+    // Contrast + shadow lift + highlight clip
     const ec=con*dCD;
-    r=Math.min(r*ec+sL,hC); g=Math.min(g*ec+sL,hC); b=Math.min(b*ec+sL,hC);
+    r=Math.min(r*ec+sL,hC);
+    g=Math.min(g*ec+sL,hC);
+    b=Math.min(b*ec+sL,hC);
+
+    // Colour cast — red boost, green/blue slight pull
     r*=rB; g*=gM; b*=bM;
-    const eS=sat-dF*0.08*i, gr=(r+g+b)/3;
+
+    // Desaturate
+    const eS=sat-dF*0.08*i;
+    const gr=(r+g+b)/3;
     r=gr+(r-gr)*eS; g=gr+(g-gr)*eS; b=gr+(b-gr)*eS;
-    const eL=lS*dNB;
-    if(eL>0.5){const ln=gauss(eL),pB=(r+g+b)/3,sB=Math.max(0,1-pB/100)*0.7;r+=ln+gauss(cS)+gauss(eL*sB);g+=ln+gauss(cS)+gauss(eL*sB);b+=ln+gauss(cS)+gauss(eL*sB);}
-    if(vS>0.01){const dx=(x-cxP)*cxI,dy=(y-cyP)*cyI,dist=Math.sqrt(dx*dx+dy*dy),vig=Math.max(0.25,1-vS*Math.pow(Math.max(0,dist-0.4),1.5));r*=vig;g*=vig;b*=vig;}
-    d[idx]=r<0?0:r>255?255:(r+0.5)|0;
+
+    // Noise — luma + chroma
+    const eLs=lS*dNB;
+    if(eLs>0.5){
+      const ln=gauss(eLs);
+      const pB=(r+g+b)/3;
+      const sB=Math.max(0,1-pB/100)*0.7;
+      r+=ln+gauss(cS)+gauss(eLs*sB);
+      g+=ln+gauss(cS)+gauss(eLs*sB);
+      b+=ln+gauss(cS)+gauss(eLs*sB);
+    }
+
+    // Vignette
+    if(vS>0.01){
+      const dx=(x-cx)/cx, dy=(y-cy)/cy;
+      const dist=Math.sqrt(dx*dx+dy*dy);
+      const vig=Math.max(0.25,1-vS*Math.pow(Math.max(0,dist-0.4),1.5));
+      r*=vig; g*=vig; b*=vig;
+    }
+
+    d[idx]  =r<0?0:r>255?255:(r+0.5)|0;
     d[idx+1]=g<0?0:g>255?255:(g+0.5)|0;
     d[idx+2]=b<0?0:b>255?255:(b+0.5)|0;
   }
   ctx.putImageData(img,0,0);
 
-  // Timestamp
-  if(timestamp){
+  // Blur pass 2 — compression softness
+  const b2=bR*0.35;
+  if(b2>0.2){
+    const t2=document.createElement('canvas');t2.width=W;t2.height=H;
+    const tc2=t2.getContext('2d');tc2.filter=`blur(${b2}px)`;tc2.drawImage(out,0,0);
+    ctx.drawImage(t2,0,0);
+  }
+
+  // Timestamp — exactly like Steve's app
+  if(ts){
     const fs=P.tsFontSize, mx=P.tsMarginX, my=P.tsMarginY;
     ctx.font=`bold ${fs}px "Courier New",Courier,monospace`;
     ctx.textBaseline='bottom';
-    ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillText(timestamp,mx+1,H-my+1);
-    ctx.fillStyle='rgba(255,255,255,0.92)'; ctx.fillText(timestamp,mx,H-my);
+    ctx.fillStyle='rgba(0,0,0,0.5)';
+    ctx.fillText(ts,mx+1,H-my+1);
+    ctx.fillStyle='rgba(255,255,255,0.92)';
+    ctx.fillText(ts,mx,H-my);
   }
+
   return out;
 }
 
-// ── UI ─────────────────────────────────────────────────────────────
-const btnOpen=document.getElementById('btnOpen');
+// ── UI ──────────────────────────────────────────────────────────────
+const btnAdd=document.getElementById('btnAdd');
 const fileIn=document.getElementById('fileIn');
 const drop=document.getElementById('drop');
 const ctrls=document.getElementById('ctrls');
@@ -180,104 +207,90 @@ const cLbl=document.getElementById('cLbl');
 
 sInt.oninput=()=>iLbl.textContent=Math.round(parseFloat(sInt.value)*100)+'%';
 sCrop.oninput=()=>cLbl.textContent=Math.round(parseFloat(sCrop.value)*100)+'%';
-
-btnOpen.onclick=()=>fileIn.click();
+btnAdd.onclick=()=>fileIn.click();
 drop.onclick=()=>fileIn.click();
-drop.ondragover=e=>{e.preventDefault();drop.classList.add('drag');};
-drop.ondragleave=()=>drop.classList.remove('drag');
-drop.ondrop=e=>{e.preventDefault();drop.classList.remove('drag');handleFiles(e.dataTransfer.files);};
 fileIn.onchange=e=>{handleFiles(e.target.files);e.target.value='';};
 
-let processing=false;
-let pendingQueue=[];
+let pending=[], processing=false;
 
-function handleFiles(fileList){
-  const imgs=Array.from(fileList).filter(f=>f.type.startsWith('image/')).slice(0,50);
+function handleFiles(list){
+  const imgs=Array.from(list).filter(f=>f.type.startsWith('image/')).slice(0,50);
   if(!imgs.length)return;
-  ctrls.style.display='block';
   drop.style.display='none';
-
+  ctrls.style.display='block';
   imgs.forEach(f=>{
-    const id='c'+Date.now()+Math.random();
-    pendingQueue.push({id,file:f});
+    const id='i'+Date.now()+Math.random().toString(36).slice(2);
+    pending.push({id,file:f});
     addCard(id,f);
   });
-
-  statEl.textContent=`${pendingQueue.length} photo${pendingQueue.length>1?'s':''} queued`;
-  if(!processing)processNext();
+  statEl.textContent=`${pending.length} photo${pending.length>1?'s':''} queued`;
+  if(!processing)runNext();
 }
 
 function addCard(id,file){
   const url=URL.createObjectURL(file);
-  const card=document.createElement('div');
-  card.className='card'; card.id=id;
-  card.innerHTML=`
-    <div class="card-img-wrap">
-      <img class="card-img" id="img-${id}" src="${url}">
-      <div class="card-spinner" id="spin-${id}">processing…</div>
-    </div>
-    <div class="card-bottom">
+  const el=document.createElement('div');
+  el.className='card'; el.id=id;
+  el.innerHTML=`
+    <img class="card-img" id="img-${id}" src="${url}">
+    <div class="card-foot">
       <span class="card-name">${file.name}</span>
-      <div class="card-actions">
-        <span class="card-state" id="state-${id}">waiting</span>
-        <button class="save-btn" id="save-${id}">Save</button>
-      </div>
+      <span class="state" id="st-${id}">waiting</span>
+      <button class="savebtn" id="sv-${id}">Save ↓</button>
     </div>`;
-  queue.appendChild(card);
+  queue.appendChild(el);
 }
 
-async function processNext(){
-  if(!pendingQueue.length){processing=false;return;}
+async function runNext(){
+  if(!pending.length){processing=false;return;}
   processing=true;
-  const {id,file}=pendingQueue.shift();
-
-  const stateEl=document.getElementById(`state-${id}`);
-  const spinEl=document.getElementById(`spin-${id}`);
+  const {id,file}=pending.shift();
+  const stEl=document.getElementById(`st-${id}`);
   const imgEl=document.getElementById(`img-${id}`);
-  const saveBtn=document.getElementById(`save-${id}`);
+  const svBtn=document.getElementById(`sv-${id}`);
 
-  stateEl.className='card-state processing';
-  stateEl.textContent='processing…';
-  spinEl.classList.add('show');
-
-  await new Promise(r=>setTimeout(r,20)); // let UI update
+  stEl.className='state proc'; stEl.textContent='processing…';
+  await new Promise(r=>setTimeout(r,30));
 
   try{
-    const bitmap=await createImageBitmap(file);
-    const srcC=document.createElement('canvas');
-    srcC.width=bitmap.width; srcC.height=bitmap.height;
-    srcC.getContext('2d').drawImage(bitmap,0,0);
-    bitmap.close();
+    // Get file timestamp
+    const dt=new Date(file.lastModified);
+    const p=n=>String(n).padStart(2,'0');
+    const ts=`${dt.getFullYear()}/${p(dt.getMonth()+1)}/${p(dt.getDate())}  ${p(dt.getHours())}:${p(dt.getMinutes())}:${p(dt.getSeconds())}`;
 
-    const d=new Date(file.lastModified), p=n=>String(n).padStart(2,'0');
-    const ts=`${d.getFullYear()}/${p(d.getMonth()+1)}/${p(d.getDate())}  ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+    // Load image
+    const bmp=await createImageBitmap(file);
+    const src=document.createElement('canvas');
+    src.width=bmp.width; src.height=bmp.height;
+    src.getContext('2d').drawImage(bmp,0,0);
+    bmp.close();
 
-    const result=applyFilter(srcC, parseFloat(sCrop.value), parseFloat(sInt.value), ts);
+    // Apply filter
+    const result=applyFilter(src, parseFloat(sCrop.value), parseFloat(sInt.value), ts);
+    const dataUrl=result.toDataURL('image/jpeg', P.jpegQuality);
 
-    // Show result
-    imgEl.src=result.toDataURL('image/jpeg', P.jpegQuality);
-    spinEl.classList.remove('show');
-    stateEl.className='card-state done';
-    stateEl.textContent='done';
+    // Update preview
+    imgEl.src=dataUrl;
+    stEl.className='state done'; stEl.textContent='done ✓';
 
-    // Save button — opens image so user can long-press save to camera roll
-    saveBtn.classList.add('show');
-    saveBtn.onclick=()=>{
-      const url=result.toDataURL('image/jpeg', P.jpegQuality);
+    // Save button — opens new tab, user long-presses to save
+    svBtn.style.display='block';
+    svBtn.onclick=()=>{
       const w=window.open('');
-      w.document.write(`<img src="${url}" style="max-width:100%;display:block"><p style="font-family:sans-serif;color:#888;font-size:13px;padding:8px">Press and hold the image → Save to Photos</p>`);
+      if(w){
+        w.document.write(`<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width"><style>body{margin:0;background:#000;display:flex;flex-direction:column;align-items:center;padding:12px}img{max-width:100%;border-radius:4px}p{color:#888;font-size:13px;font-family:sans-serif;margin-top:10px;text-align:center}</style></head><body><img src="${dataUrl}"><p>Press and hold image → Save to Photos</p></body></html>`);
+        w.document.close();
+      }
     };
 
-  } catch(e){
-    spinEl.classList.remove('show');
-    stateEl.className='card-state error';
-    stateEl.textContent='error';
+  }catch(e){
+    stEl.className='state err'; stEl.textContent='error';
   }
 
-  const remaining=pendingQueue.length;
-  statEl.textContent=remaining>0?`${remaining} remaining…`:'All done — tap Save on each photo';
-  await new Promise(r=>setTimeout(r,50));
-  processNext();
+  const rem=pending.length;
+  statEl.textContent=rem>0?`${rem} left…`:'All done — tap Save on each photo';
+  await new Promise(r=>setTimeout(r,60));
+  runNext();
 }
 </script>
 </body>
